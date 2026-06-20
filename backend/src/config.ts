@@ -20,7 +20,7 @@ export const config: Config = {
   channel: process.env.CHANNEL === "bluebubbles" ? "bluebubbles" : "local",
   port: Number(process.env.PORT ?? 8787),
   anthropicApiKey: process.env.ANTHROPIC_API_KEY || undefined,
-  model: process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-6",
+  model: process.env.ANTHROPIC_MODEL ?? "claude-haiku-4-5",
   redisUrl: process.env.REDIS_URL || undefined,
   bluebubbles: {
     serverUrl: process.env.BLUEBUBBLES_SERVER_URL,

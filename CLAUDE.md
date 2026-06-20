@@ -76,7 +76,8 @@ default, Redis when `REDIS_URL` is set.
 - `pnpm channel:register` — register the webhook with a running BlueBubbles server
 - `pnpm typecheck` / `pnpm test`
 
-Config via `.env` (never committed) — see `.env.example`. Model: `claude-sonnet-4-6`.
+Config via `.env` (never committed) — see `.env.example`. Model: `claude-haiku-4-5`
+(cheap for testing; override with `ANTHROPIC_MODEL`, e.g. `claude-sonnet-4-6`).
 Without `ANTHROPIC_API_KEY`, the loop auto-uses a scripted stand-in so it still runs;
 set the key for real Claude.
 
