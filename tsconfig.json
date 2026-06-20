@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "paths": {
+      "@drunk-buddy/shared": ["./shared/src/index.ts"],
+      "@drunk-buddy/channel": ["./channel/src/index.ts"]
+    }
+  },
+  "include": ["shared/src", "channel/src", "backend/src", "backend/test"]
+}

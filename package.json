@@ -1,0 +1,20 @@
+{
+  "name": "drunk-buddy",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev:chat": "tsx backend/src/dev/chat.ts",
+    "smoke": "tsx backend/src/dev/smoke.ts",
+    "dev": "tsx backend/src/index.ts",
+    "channel:register": "tsx channel/src/register-webhook.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "latest",
+    "tsx": "latest",
+    "typescript": "latest",
+    "vitest": "latest"
+  }
+}
