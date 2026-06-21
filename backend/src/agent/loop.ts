@@ -40,6 +40,11 @@ async function runToolLoop(system: string, messages: any[], deps: Deps, phone: s
     const resp = await llm.createMessage({ system, messages });
     messages.push({ role: "assistant", content: resp.content });
 
+    // Capture text from EVERY turn — Claude often writes its message in the same
+    // turn it calls a tool, and that text would otherwise be lost (→ blank "(…)").
+    const turnText = textOf(resp.content);
+    if (turnText) finalText = turnText;
+
     if (resp.stop_reason === "tool_use") {
       const results: any[] = [];
       for (const block of resp.content) {
@@ -59,7 +64,6 @@ async function runToolLoop(system: string, messages: any[], deps: Deps, phone: s
       continue;
     }
 
-    finalText = textOf(resp.content);
     break;
   }
   return finalText;
@@ -80,7 +84,7 @@ export async function handleInbound(input: { phone: string; text: string }, deps
 
   await deps.store.appendConversation(phone, { role: "user", content: text });
   if (finalText) await deps.store.appendConversation(phone, { role: "assistant", content: finalText });
-  return finalText || "(…)";
+  return finalText;
 }
 
 // The guardian reaching out UNPROMPTED (heart-rate check-in / escalation). The

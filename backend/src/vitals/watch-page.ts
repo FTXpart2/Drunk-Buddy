@@ -1,7 +1,10 @@
-// The web page the buddy links one-tap in the thread (brief non-negotiable #1:
-// links are the only external surface). It streams live HR to /vitals via Web
-// Bluetooth (BLE Heart Rate Service 0x180D) while open — and offers a manual /
-// "simulate spike" control for iOS Safari (no Web Bluetooth) and demos.
+// The one-tap page the buddy links in the thread (brief non-negotiable #1: links
+// are the only external surface). On a phone browser we CAN'T read the Apple
+// Watch directly (iOS has no Web Bluetooth), so this is a polished live monitor
+// that auto-streams a controllable vitals signal to /vitals (the brief's
+// "simulated stream") plus the phone's live location to /location. A real
+// deployment would feed /vitals from HealthKit via an iOS Shortcut / Health Auto
+// Export — same endpoint, no page change.
 export function watchPageHtml(): string {
   return `<!doctype html>
 <html lang="en">
@@ -9,119 +12,96 @@ export function watchPageHtml(): string {
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
-<title>drunk buddy · heart watch</title>
+<meta name="theme-color" content="#0a0a0f" />
+<title>drunk buddy · vitals</title>
 <style>
   :root { color-scheme: dark; }
-  * { box-sizing: border-box; }
-  body { margin:0; font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-    background:#0b0b10; color:#f4f4f7; min-height:100vh;
-    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:22px; padding:28px; }
-  h1 { font-size:18px; font-weight:600; margin:0; opacity:.85; }
-  .hr { font-size:84px; font-weight:800; line-height:1; letter-spacing:-2px; }
-  .hr span { font-size:22px; font-weight:600; opacity:.6; }
-  .pulse { color:#ff5a78; animation:beat 1s infinite ease-in-out; }
-  @keyframes beat { 0%,100%{transform:scale(1)} 14%{transform:scale(1.14)} 28%{transform:scale(1)} }
-  .status { min-height:22px; font-size:14px; opacity:.7; text-align:center; }
-  button { appearance:none; border:0; border-radius:999px; padding:14px 22px; font-size:16px;
-    font-weight:600; color:#0b0b10; background:#7fd1ff; cursor:pointer; }
-  button.ghost { background:#23232e; color:#f4f4f7; }
-  .row { display:flex; gap:12px; flex-wrap:wrap; justify-content:center; }
-  input[type=range] { width:220px; }
-  .manual { display:flex; flex-direction:column; align-items:center; gap:8px; opacity:.9; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin:0; height:100%; }
+  body {
+    font: 16px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+    background: radial-gradient(125% 80% at 50% -10%, #1c1033 0%, #0a0a0f 55%);
+    color: #f4f4f7; min-height: 100dvh;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 22px; padding: 34px 24px; text-align: center;
+  }
+  .brand { font-size: 12.5px; letter-spacing: .16em; text-transform: uppercase; opacity: .5; }
+  .heart-wrap { position: relative; display: grid; place-items: center; width: 200px; height: 200px; }
+  .ring { position: absolute; inset: 14px; border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(255,76,109,.20), transparent 72%); }
+  .heart { font-size: 92px; line-height: 1; filter: drop-shadow(0 8px 26px rgba(255,76,109,.5));
+    animation: beat var(--beat, .82s) infinite ease-in-out; }
+  @keyframes beat { 0%,100%{transform:scale(1)} 16%{transform:scale(1.19)} 32%{transform:scale(.97)} 48%{transform:scale(1.05)} }
+  .bpm { font-size: 78px; font-weight: 800; letter-spacing: -3px; line-height: .9; }
+  .bpm small { font-size: 19px; font-weight: 600; opacity: .5; letter-spacing: 0; }
+  .state { font-size: 14px; font-weight: 650; padding: 6px 15px; border-radius: 999px;
+    background: rgba(127,209,255,.13); color: #9bd9ff; transition: all .3s; }
+  .state.hot { background: rgba(255,90,120,.17); color: #ff8da3; }
+  .status { font-size: 12.5px; opacity: .55; display: flex; align-items: center; gap: 7px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #43d17a; box-shadow: 0 0 10px #43d17a; transition: background .3s; }
+  .controls { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 2px; }
+  button { appearance: none; border: 0; border-radius: 14px; padding: 13px 20px; font-size: 15px;
+    font-weight: 650; color: #f4f4f7; background: rgba(255,255,255,.08);
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); cursor: pointer;
+    transition: transform .08s ease, background .15s; }
+  button:active { transform: scale(.95); }
+  button.spike { background: linear-gradient(135deg, #ff5a6e, #ff2d63); color: #fff; box-shadow: 0 6px 20px rgba(255,45,99,.35); }
+  .hint { font-size: 12px; opacity: .42; max-width: 290px; line-height: 1.45; }
 </style>
 </head>
 <body>
-  <h1>drunk buddy is watching 💙</h1>
-  <div class="hr" id="hr">--<span> bpm</span></div>
-  <div class="status" id="status">tap connect to share your heart rate</div>
-  <div class="row">
-    <button id="connect">connect watch</button>
+  <div class="brand">drunk buddy · watching over you</div>
+  <div class="heart-wrap"><div class="ring"></div><div class="heart" id="heart">❤️</div></div>
+  <div class="bpm"><span id="bpm">--</span><small> bpm</small></div>
+  <div class="state" id="state">connecting…</div>
+  <div class="status"><span class="dot" id="dot"></span><span id="status">starting…</span></div>
+  <div class="controls">
+    <button id="spike" class="spike">simulate spike</button>
+    <button id="calm">back to normal</button>
   </div>
-  <div class="manual">
-    <input type="range" id="slider" min="30" max="180" value="78" />
-    <div class="row">
-      <button class="ghost" id="send">send this bpm</button>
-      <button class="ghost" id="spike">simulate spike</button>
-    </div>
-  </div>
+  <div class="hint" id="hint">your heart rate &amp; location stream privately to your buddy while this stays open.</div>
 <script>
-  const params = new URLSearchParams(location.search);
-  const token = params.get("t") || "";
-  const hrEl = document.getElementById("hr");
-  const statusEl = document.getElementById("status");
-  const slider = document.getElementById("slider");
+  var params = new URLSearchParams(location.search);
+  var token = params.get("t") || "";
+  var $ = function (id) { return document.getElementById(id); };
+  var hr = 74, target = 74;
 
-  function paint(hr) {
-    hrEl.innerHTML = hr + "<span> bpm</span>";
-    hrEl.classList.toggle("pulse", hr > 0);
+  function render() {
+    var v = Math.round(hr);
+    $("bpm").textContent = v;
+    var hot = v >= 130 || (v > 0 && v <= 50);
+    $("state").textContent = hot ? (v <= 50 ? "running low — hang tight" : "elevated — i'm watching") : "looking good";
+    $("state").classList.toggle("hot", hot);
+    $("heart").style.setProperty("--beat", Math.max(0.34, 60 / Math.max(v, 1)).toFixed(2) + "s");
   }
 
-  async function post(hr) {
-    if (!token) { statusEl.textContent = "missing link token — ask your buddy to resend the link"; return; }
-    paint(hr);
+  async function pushHr() {
+    if (!token) { $("status").textContent = "missing link — ask your buddy to resend it"; $("dot").style.background = "#ff5a6e"; return; }
     try {
-      const r = await fetch("/vitals", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ t: token, hr }),
-      });
-      statusEl.textContent = r.ok ? "synced · " + new Date().toLocaleTimeString() : "sync failed (" + r.status + ")";
-    } catch (e) {
-      statusEl.textContent = "offline — can't reach buddy";
-    }
+      await fetch("/vitals", { method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ t: token, hr: Math.round(hr), motion: 0 }) });
+      $("status").textContent = "live · synced " + new Date().toLocaleTimeString();
+      $("dot").style.background = "#43d17a";
+    } catch (e) { $("status").textContent = "reconnecting…"; $("dot").style.background = "#e0b341"; }
   }
 
-  // Share live location so the buddy can set the Uber pickup + drop an alert pin.
-  async function postLocation(lat, lon) {
-    if (!token) return;
-    try {
-      await fetch("/location", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ t: token, lat, lon }),
-      });
-    } catch (e) {}
-  }
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      (p) => postLocation(p.coords.latitude, p.coords.longitude),
-      () => {},
-      { enableHighAccuracy: true },
-    );
-    navigator.geolocation.watchPosition(
-      (p) => postLocation(p.coords.latitude, p.coords.longitude),
-      () => {},
-      { enableHighAccuracy: true, maximumAge: 30000 },
-    );
-  }
+  // smooth, lifelike heartbeat that eases toward a target; streamed every 3s
+  setInterval(function () { hr += (target - hr) * 0.22 + (Math.random() - 0.5) * 1.4; render(); }, 250);
+  setInterval(pushHr, 3000);
+  render(); pushHr();
 
-  document.getElementById("send").onclick = () => post(Number(slider.value));
-  document.getElementById("spike").onclick = () => { slider.value = 150; post(150); };
-  slider.oninput = () => paint(Number(slider.value));
+  $("spike").onclick = function () { target = 152; $("hint").textContent = "spike sent — your buddy's about to check on you."; };
+  $("calm").onclick = function () { target = 74; $("hint").textContent = "back to normal. nice."; };
 
-  document.getElementById("connect").onclick = async () => {
-    if (!navigator.bluetooth) {
-      statusEl.textContent = "this browser can't read the watch directly — use the slider below";
-      return;
-    }
-    try {
-      statusEl.textContent = "pairing…";
-      const device = await navigator.bluetooth.requestDevice({ filters: [{ services: ["heart_rate"] }] });
-      const server = await device.gatt.connect();
-      const service = await server.getPrimaryService("heart_rate");
-      const ch = await service.getCharacteristic("heart_rate_measurement");
-      await ch.startNotifications();
-      statusEl.textContent = "connected · streaming live";
-      ch.addEventListener("characteristicvaluechanged", (ev) => {
-        const v = ev.target.value;
-        const flags = v.getUint8(0);
-        const hr = flags & 0x1 ? v.getUint16(1, true) : v.getUint8(1);
-        post(hr);
-      });
-    } catch (e) {
-      statusEl.textContent = "couldn't connect — use the slider below";
-    }
-  };
+  // share live location over https (the Uber pickup + the emergency map pin)
+  if (navigator.geolocation && token) {
+    var sendLoc = function (p) {
+      fetch("/location", { method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ t: token, lat: p.coords.latitude, lon: p.coords.longitude }) }).catch(function () {});
+    };
+    navigator.geolocation.getCurrentPosition(sendLoc, function () {}, { enableHighAccuracy: true });
+    navigator.geolocation.watchPosition(sendLoc, function () {}, { enableHighAccuracy: true, maximumAge: 30000 });
+  }
 </script>
 </body>
 </html>`;
