@@ -1,17 +1,14 @@
 // Serves a contact card so "Add Drunk Buddy" saves the chat under the name
-// "Drunk Buddy" (and the card has a Message button that opens iMessage to it).
+// "Drunk Buddy", wired to the buddy's Apple ID email so iMessage routes to it.
 export function GET() {
-  const num = process.env.NEXT_PUBLIC_BUDDY_NUMBER ?? "";
-  const vcf = [
-    "BEGIN:VCARD",
-    "VERSION:3.0",
-    "N:Buddy;Drunk;;;",
-    "FN:Drunk Buddy",
-    num ? `TEL;type=CELL:${num}` : "",
-    "END:VCARD",
-  ]
-    .filter(Boolean)
-    .join("\r\n");
+  const handle = process.env.NEXT_PUBLIC_BUDDY_HANDLE || "katikati806@gmail.com";
+  const contactLine = handle.includes("@")
+    ? `EMAIL;type=INTERNET;type=pref:${handle}`
+    : `TEL;type=CELL:${handle}`;
+
+  const vcf = ["BEGIN:VCARD", "VERSION:3.0", "N:Buddy;Drunk;;;", "FN:Drunk Buddy", contactLine, "END:VCARD"].join(
+    "\r\n",
+  );
 
   return new Response(vcf, {
     headers: {
