@@ -2,17 +2,10 @@ import Link from "next/link"
 import { ArrowRight, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { PhoneMockup } from "@/components/phone-mockup"
-import TextCursor from "@/components/TextCursor"
 
 export function Hero() {
   return (
     <section className="relative overflow-hidden">
-      {/* playful text trail that follows the cursor across the hero —
-          pointer-events-none so it never blocks the buttons */}
-      <div className="pointer-events-none absolute inset-0 z-20">
-        <TextCursor text="🍻" spacing={80} maxPoints={8} exitDuration={0.6} />
-      </div>
-
       <div className="mx-auto max-w-6xl px-4 pb-0 pt-16 text-center sm:px-6 sm:pt-24">
         <Link
           href="#features"

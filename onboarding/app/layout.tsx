@@ -2,6 +2,7 @@ import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono, Instrument_Serif } from 'next/font/google'
 import { SmoothScroll } from '@/components/smooth-scroll'
+import { CursorTrail } from '@/components/cursor-trail'
 import 'lenis/dist/lenis.css'
 import './globals.css'
 
@@ -58,6 +59,7 @@ export default function RootLayout({
     >
       <body className="font-sans antialiased">
         <SmoothScroll>{children}</SmoothScroll>
+        <CursorTrail />
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>
