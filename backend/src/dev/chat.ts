@@ -11,7 +11,14 @@ import { createLocalChannel } from "@drunk-buddy/channel";
 const store = createStore();
 const llm = createLlm(config);
 const contacts = createContacts(config);
-const deps: Deps = { store, llm, actions: stubActions, contacts, maxSteps: 6 };
+const deps: Deps = {
+  store,
+  llm,
+  actions: stubActions,
+  contacts,
+  notifyContact: async (number, text) => console.error(`\n[alert → ${number}] ${text}\n`),
+  maxSteps: 6,
+};
 
 const channel = createLocalChannel();
 channel.onMessage(async (msg) => {

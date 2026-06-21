@@ -22,7 +22,6 @@ import { log } from "./log";
 const store = createStore();
 const llm = createLlm(config);
 const contacts = createContacts(config);
-const deps: Deps = { store, llm, actions: stubActions, contacts, maxSteps: 6 };
 
 let channel: Channel;
 let bluebubbles: BlueBubblesChannel | null = null;
@@ -59,6 +58,15 @@ if (config.channel === "bluebubbles") {
 } else {
   channel = createLocalChannel();
 }
+
+// Texting an emergency contact at their real number, channel-aware:
+// iMessage sends to a fresh 1:1 chat (iMessage;-;<number>), Twilio sends SMS.
+const notifyContact = async (number: string, text: string): Promise<void> => {
+  if (bluebubbles) await bluebubbles.sendText(`iMessage;-;${number}`, text);
+  else if (twilioCh) await twilioCh.sendText(number, text);
+  else log("notify.skip", { number, note: `channel '${channel.name}' can't text external numbers` });
+};
+const deps: Deps = { store, llm, actions: stubActions, contacts, notifyContact, maxSteps: 6 };
 
 channel.onMessage(async (msg) => {
   if (!msg.text) {

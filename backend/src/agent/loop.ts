@@ -15,6 +15,8 @@ export interface Deps {
   llm: Llm;
   actions: Actions;
   contacts: Contacts;
+  /** Text an arbitrary number (emergency-contact alerts). */
+  notifyContact: (number: string, text: string) => Promise<void>;
   maxSteps: number;
 }
 
@@ -23,7 +25,7 @@ export async function handleInbound(
   deps: Deps,
 ): Promise<string> {
   const { phone, text } = input;
-  const { store, llm, actions, contacts } = deps;
+  const { store, llm, actions, contacts, notifyContact } = deps;
 
   const [profile, friends, blocklist, party, convo, memory] = await Promise.all([
     store.getProfile(phone),
@@ -53,7 +55,13 @@ export async function handleInbound(
       for (const block of resp.content) {
         if (block.type === "tool_use") {
           log("tool.use", { name: block.name, input: block.input });
-          const result = await dispatchTool(block.name, block.input, { phone, store, actions, contacts });
+          const result = await dispatchTool(block.name, block.input, {
+            phone,
+            store,
+            actions,
+            contacts,
+            notifyContact,
+          });
           results.push({ type: "tool_result", tool_use_id: block.id, content: result });
         }
       }

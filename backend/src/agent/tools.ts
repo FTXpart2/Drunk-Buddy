@@ -126,6 +126,8 @@ export interface ToolContext {
   store: Store;
   actions: Actions;
   contacts: Contacts;
+  /** Send an iMessage/SMS to an arbitrary number (the user's emergency contact). */
+  notifyContact: (number: string, text: string) => Promise<void>;
 }
 
 export async function dispatchTool(
@@ -133,7 +135,7 @@ export async function dispatchTool(
   input: any,
   ctx: ToolContext,
 ): Promise<string> {
-  const { phone, store, actions, contacts } = ctx;
+  const { phone, store, actions, contacts, notifyContact } = ctx;
   switch (name) {
     case "update_profile":
       return updateProfile(phone, input, store);
@@ -156,12 +158,25 @@ export async function dispatchTool(
 
     case "alert_circle": {
       const friends = await store.getFriends(phone);
-      return actions.alertCircle({
-        phone,
-        reason: String(input.reason ?? "unresponsive"),
-        location: input.location,
-        contacts: friends.filter((f) => f.is_emergency),
-      });
+      const ec = friends.filter((f) => f.is_emergency && f.phone);
+      if (!ec.length) {
+        return "no emergency contact with a number saved yet — can't reach anyone. ask them who to call.";
+      }
+      const who = (await store.getProfile(phone))?.name ?? "your friend";
+      const loc = input.location ? ` they're at ${input.location}.` : "";
+      const msg = `hey — it's ${who}'s drunk buddy. ${String(input.reason ?? "i can't reach them and i'm worried.")}${loc} can you check on them?`;
+      const sent: string[] = [];
+      for (const c of ec) {
+        try {
+          await notifyContact(c.phone, msg);
+          sent.push(c.name);
+        } catch {
+          // keep trying the other contacts
+        }
+      }
+      return sent.length
+        ? `texted ${sent.join(", ")} directly: "${msg}"`
+        : "tried to alert your emergency contacts but the texts didn't go through.";
     }
 
     case "block_intercept": {

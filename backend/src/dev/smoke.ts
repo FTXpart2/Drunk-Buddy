@@ -12,7 +12,14 @@ import { onboardingStatus } from "../onboarding/onboarding";
 // the scripted stand-in.
 const store = new MemoryStore();
 const llm = createLlm(config);
-const deps: Deps = { store, llm, actions: stubActions, contacts: stubContacts, maxSteps: 6 };
+const deps: Deps = {
+  store,
+  llm,
+  actions: stubActions,
+  contacts: stubContacts,
+  notifyContact: async (number, text) => console.log(`[alert → ${number}] ${text}`),
+  maxSteps: 6,
+};
 const phone = "+14155550199";
 
 const script = [
