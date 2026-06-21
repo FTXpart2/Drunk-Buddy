@@ -1,5 +1,5 @@
 import { Car, ShieldBan, HeartPulse, MoonStar } from "lucide-react"
-import { Bubble } from "@/components/chat"
+import { AnimatedConversation } from "@/components/animated-conversation"
 import { cn } from "@/lib/utils"
 
 type Feature = {
@@ -85,7 +85,7 @@ export function Features() {
 function FeatureRow({ feature, flip }: { feature: Feature; flip: boolean }) {
   const Icon = feature.icon
   return (
-    <div className="grid items-center gap-10 md:grid-cols-2 md:gap-16">
+    <div className="grid items-start gap-10 md:grid-cols-2 md:gap-16">
       <div className={cn(flip && "md:order-2")}>
         <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-sm font-medium">
           <Icon className="size-4 text-accent" />
@@ -101,14 +101,13 @@ function FeatureRow({ feature, flip }: { feature: Feature; flip: boolean }) {
       </div>
 
       <div className={cn(flip && "md:order-1")}>
-        <div className="rounded-3xl border border-border bg-card/70 p-5 shadow-sm">
-          <div className="flex flex-col gap-2.5">
-            {feature.chat.map((m, idx) => (
-              <Bubble key={idx} from={m.from}>
-                <span dangerouslySetInnerHTML={{ __html: m.text }} />
-              </Bubble>
-            ))}
-          </div>
+        <div className="min-h-[210px] rounded-3xl border border-border bg-card/70 p-5 shadow-sm">
+          <AnimatedConversation
+            messages={feature.chat.map((m) => ({
+              from: m.from,
+              node: <span dangerouslySetInnerHTML={{ __html: m.text }} />,
+            }))}
+          />
         </div>
       </div>
     </div>

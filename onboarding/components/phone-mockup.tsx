@@ -1,6 +1,27 @@
+"use client"
+
 import { ChevronLeft, Video, Plus, ArrowUp } from "lucide-react"
-import { Bubble, TypingBubble, ChatTimestamp } from "@/components/chat"
+import { ChatTimestamp } from "@/components/chat"
+import { AnimatedConversation, type ChatMessage } from "@/components/animated-conversation"
 import { cn } from "@/lib/utils"
+
+const messages: ChatMessage[] = [
+  { from: "buddy", node: <>heyyy you been quiet for a bit. you good? 👀</> },
+  { from: "you", node: <>im FINE im having the best night everrr</> },
+  { from: "buddy", node: <>love that for you. you still at The Vine?</> },
+  { from: "you", node: <>yeah why</> },
+  {
+    from: "buddy",
+    node: (
+      <>cool cool. booked you an Uber home for whenever — it&apos;s 6 min out. say the word and i&apos;ll send it 🚕</>
+    ),
+  },
+  { from: "you", node: <>ur the best honestly</> },
+  {
+    from: "buddy",
+    node: <>i know 😌 also… do NOT text Jordan. i&apos;m holding that one for you.</>,
+  },
+]
 
 export function PhoneMockup({ className }: { className?: string }) {
   return (
@@ -29,21 +50,13 @@ export function PhoneMockup({ className }: { className?: string }) {
           <Video className="size-5 text-imessage" />
         </div>
 
-        {/* conversation */}
-        <div className="flex flex-col gap-2 px-3 py-4">
-          <ChatTimestamp>Today 11:47 PM</ChatTimestamp>
-          <Bubble from="buddy">heyyy you been quiet for a bit. you good? 👀</Bubble>
-          <Bubble from="you">im FINE im having the best night everrr</Bubble>
-          <Bubble from="buddy">love that for you. you still at The Vine?</Bubble>
-          <Bubble from="you">yeah why</Bubble>
-          <Bubble from="buddy">
-            cool cool. booked you an Uber home for whenever — it&apos;s 6 min out. say the word and i&apos;ll send it 🚕
-          </Bubble>
-          <Bubble from="you">ur the best honestly</Bubble>
-          <Bubble from="buddy">
-            i know 😌 also… do NOT text Jordan. i&apos;m holding that one for you.
-          </Bubble>
-          <TypingBubble />
+        {/* conversation — fixed height; the thread sits at the bottom like a real chat.
+            overflow-hidden so a long thread clips at the top instead of bleeding into the header */}
+        <div className="flex h-[480px] flex-col overflow-hidden px-3 py-4">
+          <div className="mt-auto flex flex-col gap-2.5">
+            <ChatTimestamp>Today 11:47 PM</ChatTimestamp>
+            <AnimatedConversation messages={messages} loop />
+          </div>
         </div>
 
         {/* input bar */}
