@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { motion } from "motion/react"
 import { Bubble, TypingBubble } from "@/components/chat"
 import { cn } from "@/lib/utils"
 
@@ -75,17 +76,23 @@ export function AnimatedConversation({ messages, className, startDelay = 650, lo
   return (
     <div ref={ref} className={cn("flex flex-col gap-2.5", className)}>
       {messages.slice(0, shown).map((m, i) => (
-        <div
+        <motion.div
           key={i}
-          className="animate-in fade-in slide-in-from-bottom-2 duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] fill-mode-both"
+          initial={{ opacity: 0, y: 10, filter: "blur(6px)" }}
+          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+          transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
         >
           <Bubble from={m.from}>{m.node}</Bubble>
-        </div>
+        </motion.div>
       ))}
       {typing && (
-        <div className="animate-in fade-in slide-in-from-bottom-1 duration-500 ease-out fill-mode-both">
+        <motion.div
+          initial={{ opacity: 0, y: 8, filter: "blur(6px)" }}
+          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+        >
           <TypingBubble />
-        </div>
+        </motion.div>
       )}
     </div>
   )

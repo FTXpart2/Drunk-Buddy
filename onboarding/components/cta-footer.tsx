@@ -49,7 +49,7 @@ export function SiteFooter() {
           <CurvedLoop
             marqueeText="Drunk Buddy ✦ texts you home safe ✦ "
             speed={2}
-            curveAmount={140}
+            curveAmount={90}
             className="fill-muted-foreground"
           />
         </div>

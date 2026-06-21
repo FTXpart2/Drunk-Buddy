@@ -14,8 +14,7 @@ export function FitsSection() {
     <section className="border-t border-border/60">
       <div className="mx-auto max-w-5xl px-4 py-20 text-center sm:px-6 sm:py-28">
         <h2 className="mx-auto max-w-3xl text-balance font-serif text-4xl leading-tight tracking-tight sm:text-5xl">
-          Drunk Buddy fits into your night
-          <sup className="ml-0.5 align-super text-xl text-muted-foreground">(1)</sup>,
+          Drunk Buddy fits into your night,
           not the other way around.
         </h2>
 
@@ -33,7 +32,7 @@ export function FitsSection() {
         </div>
 
         <p className="mx-auto mt-12 max-w-xl text-pretty text-lg leading-relaxed text-muted-foreground">
-          <span className="text-muted-foreground/70">(1)</span> It lives right in your{" "}
+          It lives right in your{" "}
           <span className="text-foreground">iMessage</span>, with the judgment of a sober best
           friend and the patience of one who never gets tired of you.
         </p>

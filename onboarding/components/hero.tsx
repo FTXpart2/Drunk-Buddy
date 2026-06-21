@@ -2,6 +2,8 @@ import Link from "next/link"
 import { ArrowRight, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { PhoneMockup } from "@/components/phone-mockup"
+import { SplitText } from "@/components/SplitText"
+import { BlurText } from "@/components/BlurText"
 
 export function Hero() {
   return (
@@ -19,14 +21,24 @@ export function Hero() {
         </Link>
 
         <h1 className="mx-auto mt-7 max-w-4xl text-balance font-serif text-5xl leading-[1.02] tracking-tight sm:text-7xl">
-          The friend who texts you
-          <br className="hidden sm:block" />{" "}
-          <span className="italic text-accent">home safe&nbsp;</span>when you can&apos;t.
+          <SplitText
+            stagger={0.03}
+            segments={[
+              { text: "The friend who texts you" },
+              { br: true },
+              { text: " " },
+              { text: "home safe ", className: "italic text-accent" },
+              { text: "when you can't." },
+            ]}
+          />
         </h1>
 
         <p className="mx-auto mt-6 max-w-xl text-pretty text-lg leading-relaxed text-muted-foreground">
-          Drunk Buddy is a contact in your phone, an AI friend that looks out for you on a night
-          out. No app to open. You just text it like a person, and it quietly handles the rest.
+          <BlurText
+            delay={0}
+            stagger={0.02}
+            text="Drunk Buddy is a contact in your phone, an AI friend that looks out for you on a night out. No app to open. You just text it like a person, and it quietly handles the rest."
+          />
         </p>
 
         <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">

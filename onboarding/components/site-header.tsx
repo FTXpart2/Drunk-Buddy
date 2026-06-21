@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { MessageCircleHeart } from "lucide-react"
+import { Beer } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 const nav = [
@@ -13,8 +13,8 @@ export function SiteHeader() {
     <header className="sticky top-0 z-50 border-b border-border/50 bg-background/70 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
         <Link href="#" className="flex items-center gap-2">
-          <span className="flex size-8 items-center justify-center rounded-full bg-foreground text-background">
-            <MessageCircleHeart className="size-4" />
+          <span className="flex size-8 -rotate-12 items-center justify-center rounded-full bg-foreground text-background transition-transform hover:rotate-0">
+            <Beer className="size-4" />
           </span>
           <span className="text-xl font-semibold tracking-tight">Drunk Buddy</span>
         </Link>
