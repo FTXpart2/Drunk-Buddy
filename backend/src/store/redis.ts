@@ -7,7 +7,7 @@ import type {
   MemoryItem,
   ChatMessage,
 } from "@drunk-buddy/shared";
-import { type Store, VITALS_CAP, CONVO_CAP } from "./store";
+import { type Store, type UserLocation, VITALS_CAP, CONVO_CAP } from "./store";
 
 // Redis-backed Store. Keys follow the data model in CLAUDE.md / PLAN.md (§5).
 export class RedisStore implements Store {
@@ -92,6 +92,13 @@ export class RedisStore implements Store {
   }
   async setChatGuid(phone: string, chatGuid: string) {
     await this.r.set(`chatguid:${phone}`, chatGuid);
+  }
+
+  async getLocation(phone: string) {
+    return this.getJson<UserLocation | null>(`location:${phone}`, null);
+  }
+  async setLocation(phone: string, loc: UserLocation) {
+    await this.setJson(`location:${phone}`, loc);
   }
 
   async getConversation(phone: string) {

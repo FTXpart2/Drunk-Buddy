@@ -71,6 +71,30 @@ export function watchPageHtml(): string {
     }
   }
 
+  // Share live location so the buddy can set the Uber pickup + drop an alert pin.
+  async function postLocation(lat, lon) {
+    if (!token) return;
+    try {
+      await fetch("/location", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ t: token, lat, lon }),
+      });
+    } catch (e) {}
+  }
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      (p) => postLocation(p.coords.latitude, p.coords.longitude),
+      () => {},
+      { enableHighAccuracy: true },
+    );
+    navigator.geolocation.watchPosition(
+      (p) => postLocation(p.coords.latitude, p.coords.longitude),
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 30000 },
+    );
+  }
+
   document.getElementById("send").onclick = () => post(Number(slider.value));
   document.getElementById("spike").onclick = () => { slider.value = 150; post(150); };
   slider.oninput = () => paint(Number(slider.value));

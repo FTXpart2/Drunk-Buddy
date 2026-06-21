@@ -7,6 +7,13 @@ import type {
   ChatMessage,
 } from "@drunk-buddy/shared";
 
+export interface UserLocation {
+  lat: number;
+  lon: number;
+  address?: string;
+  ts: number;
+}
+
 // State behind an interface so the agent never touches Redis directly.
 // MemoryStore (default) and RedisStore both implement it; swap via REDIS_URL.
 export interface Store {
@@ -35,6 +42,10 @@ export interface Store {
   // band, so the reply target (chatGuid) is persisted per phone.
   getChatGuid(phone: string): Promise<string | null>;
   setChatGuid(phone: string, chatGuid: string): Promise<void>;
+
+  // Live location (from the watch page) — the Uber pickup + the alert pin.
+  getLocation(phone: string): Promise<UserLocation | null>;
+  setLocation(phone: string, loc: UserLocation): Promise<void>;
 
   getConversation(phone: string): Promise<ChatMessage[]>;
   appendConversation(phone: string, msg: ChatMessage): Promise<void>;

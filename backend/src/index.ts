@@ -8,6 +8,7 @@ import { handleInbound, type Deps } from "./agent/loop";
 import { createGuardian } from "./vitals/guardian";
 import { createVitalsHandler } from "./vitals/ingest";
 import { watchPageHtml } from "./vitals/watch-page";
+import { createLocationHandler } from "./location/location";
 import {
   createLocalChannel,
   createBlueBubblesChannel,
@@ -104,6 +105,7 @@ app.get("/watch", (_req, res) => {
   res.type("html").send(watchPageHtml());
 });
 app.post("/vitals", createVitalsHandler(store, guardian));
+app.post("/location", createLocationHandler(store));
 if (bluebubbles) app.post("/imessage/incoming", bluebubbles.webhook());
 if (twilioCh) app.post("/sms/incoming", twilioCh.webhook());
 

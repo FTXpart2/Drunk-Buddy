@@ -173,12 +173,15 @@ export async function dispatchTool(
       return active ? "party mode ON — watching over them" : "party mode off";
     }
 
-    case "call_ride":
+    case "call_ride": {
+      const here = await store.getLocation(phone);
       return actions.callRide({
         phone,
         destination: String(input.destination ?? "home"),
+        pickup: here?.address,
         confirm: !!input.confirm,
       });
+    }
 
     case "order_food":
       return actions.orderFood({
@@ -194,8 +197,14 @@ export async function dispatchTool(
         return "no emergency contact with a number saved yet — can't reach anyone. ask them who to call.";
       }
       const who = (await store.getProfile(phone))?.name ?? "your friend";
-      const loc = input.location ? ` they're at ${input.location}.` : "";
-      const msg = `hey — it's ${who}'s drunk buddy. ${String(input.reason ?? "i can't reach them and i'm worried.")}${loc} can you check on them?`;
+      const where = await store.getLocation(phone);
+      const locText = input.location
+        ? ` they're at ${input.location}.`
+        : where?.address
+          ? ` they're near ${where.address}.`
+          : "";
+      const pin = where ? ` 📍 https://maps.google.com/?q=${where.lat},${where.lon}` : "";
+      const msg = `hey — it's ${who}'s drunk buddy. ${String(input.reason ?? "i can't reach them and i'm worried.")}${locText}${pin} can you check on them?`;
       const sent: string[] = [];
       for (const c of ec) {
         try {

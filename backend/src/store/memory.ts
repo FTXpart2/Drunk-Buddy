@@ -6,7 +6,7 @@ import type {
   MemoryItem,
   ChatMessage,
 } from "@drunk-buddy/shared";
-import { type Store, VITALS_CAP, CONVO_CAP } from "./store";
+import { type Store, type UserLocation, VITALS_CAP, CONVO_CAP } from "./store";
 
 // In-memory Store — zero setup, used when REDIS_URL is not set.
 export class MemoryStore implements Store {
@@ -18,6 +18,7 @@ export class MemoryStore implements Store {
   private memories = new Map<string, MemoryItem[]>();
   private lastSeen = new Map<string, number>();
   private chatGuids = new Map<string, string>();
+  private locations = new Map<string, UserLocation>();
   private convos = new Map<string, ChatMessage[]>();
 
   async getProfile(phone: string) {
@@ -86,6 +87,13 @@ export class MemoryStore implements Store {
   }
   async setChatGuid(phone: string, chatGuid: string) {
     this.chatGuids.set(phone, chatGuid);
+  }
+
+  async getLocation(phone: string) {
+    return this.locations.get(phone) ?? null;
+  }
+  async setLocation(phone: string, loc: UserLocation) {
+    this.locations.set(phone, loc);
   }
 
   async getConversation(phone: string) {

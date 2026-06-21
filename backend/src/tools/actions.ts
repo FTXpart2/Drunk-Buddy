@@ -12,7 +12,7 @@ export interface AlertContact {
 }
 
 export interface Actions {
-  callRide(input: { phone: string; destination: string; confirm?: boolean }): Promise<string>;
+  callRide(input: { phone: string; destination: string; pickup?: string; confirm?: boolean }): Promise<string>;
   orderFood(input: { phone: string; query: string; confirm?: boolean }): Promise<string>;
   alertCircle(input: {
     phone: string;
@@ -65,7 +65,7 @@ export const browserbaseActions: Actions = {
   ...stubActions,
   async callRide(input) {
     try {
-      const quote = await bookUber(input.destination, { confirm: input.confirm });
+      const quote = await bookUber(input.destination, { confirm: input.confirm, pickup: input.pickup });
       if (!quote.ok) {
         log("ride.fallback", { note: quote.note });
         return stubActions.callRide(input);
