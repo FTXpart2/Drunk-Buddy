@@ -8,6 +8,7 @@
     "ride:test": "tsx backend/src/dev/ride.ts",
     "food:test": "tsx backend/src/dev/food.ts",
     "uber:login": "tsx backend/src/dev/uber-login.ts",
+    "eats:login": "tsx backend/src/dev/eats-login.ts",
     "dev": "tsx backend/src/index.ts",
     "channel:register": "tsx channel/src/register-webhook.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
