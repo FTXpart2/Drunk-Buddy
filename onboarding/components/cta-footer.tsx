@@ -1,6 +1,6 @@
 import Link from "next/link"
-import { MessageCircleHeart } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import CurvedLoop from "@/components/CurvedLoop"
 
 export function FinalCta() {
   return (
@@ -40,45 +40,18 @@ export function FinalCta() {
   )
 }
 
-const footerLinks = [
-  {
-    heading: "Product",
-    links: ["How it works", "What it does", "Safety"],
-  },
-]
-
 export function SiteFooter() {
   return (
     <footer className="border-t border-border/60 bg-secondary/40">
       <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
-        <div className="grid gap-10 md:grid-cols-[1.5fr_1fr]">
-          <div>
-            <Link href="#" className="flex items-center gap-2">
-              <span className="flex size-8 items-center justify-center rounded-full bg-foreground text-background">
-                <MessageCircleHeart className="size-4" />
-              </span>
-              <span className="text-xl font-semibold tracking-tight">Drunk Buddy</span>
-            </Link>
-            <p className="mt-4 max-w-xs text-pretty text-sm leading-relaxed text-muted-foreground">
-              The AI friend that looks out for you when you&apos;re out. Lives in your messages, never
-              in your way.
-            </p>
-          </div>
-
-          {footerLinks.map((col) => (
-            <div key={col.heading}>
-              <h3 className="text-sm font-semibold">{col.heading}</h3>
-              <ul className="mt-4 flex flex-col gap-3">
-                {col.links.map((link) => (
-                  <li key={link}>
-                    <Link href="#" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
-                      {link}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+        {/* curved looping brand marquee — drag to scrub */}
+        <div>
+          <CurvedLoop
+            marqueeText="Drunk Buddy ✦ texts you home safe ✦ "
+            speed={2}
+            curveAmount={140}
+            className="fill-muted-foreground"
+          />
         </div>
 
         <div className="mt-12 flex flex-col items-start justify-between gap-3 border-t border-border/60 pt-6 text-sm text-muted-foreground sm:flex-row sm:items-center">
