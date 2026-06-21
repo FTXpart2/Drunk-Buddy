@@ -6,13 +6,17 @@ describe("onboardingStatus", () => {
     const s = onboardingStatus(null, []);
     expect(s.armed).toBe(false);
     expect(s.missing).toContain("name");
-    expect(s.missing).toContain("home address");
     expect(s.missing).toContain("at least one emergency contact");
   });
 
-  it("is armed once name, home, and an emergency contact exist", () => {
+  it("does not require a home address up front (collected lazily)", () => {
+    const s = onboardingStatus(null, []);
+    expect(s.missing).not.toContain("home address");
+  });
+
+  it("is armed with just a name + an emergency contact (no address needed)", () => {
     const s = onboardingStatus(
-      { phone: "+1", name: "Harsh", home_address: "221B", created_at: 1 },
+      { phone: "+1", name: "Harsh", created_at: 1 },
       [{ name: "Sam", phone: "+2", is_emergency: true }],
     );
     expect(s.armed).toBe(true);

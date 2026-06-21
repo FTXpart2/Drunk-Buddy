@@ -12,9 +12,11 @@ export function onboardingStatus(
   profile: UserProfile | null,
   friends: Friend[],
 ): OnboardingStatus {
+  // Keep the bar LOW so onboarding is fast: just a name + someone to call.
+  // Home address is collected lazily (only when actually sending a ride), so we
+  // never badger for an exact street address up front.
   const missing: string[] = [];
   if (!profile?.name) missing.push("name");
-  if (!profile?.home_address) missing.push("home address");
   if (!friends.some((f) => f.is_emergency)) missing.push("at least one emergency contact");
   return { armed: missing.length === 0, missing };
 }
