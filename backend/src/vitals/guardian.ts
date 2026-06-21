@@ -1,18 +1,20 @@
 import type { VitalsTick } from "@drunk-buddy/shared";
 import type { Store } from "../store/store";
 import { runGuardianCheck, type Deps } from "../agent/loop";
-import { classifyHr, type HrLevel } from "./hr";
+import { assessVitals } from "./hr";
 import { config } from "../config";
 import { log } from "../log";
 
-// The guardian turns the raw vitals feed into care. When party mode is on and HR
-// goes abnormal, the buddy reaches out UNPROMPTED ("you ok?"); if the user stays
-// silent, it escalates to their emergency contacts. Episode state is in-memory:
-// one open concern per phone so the user is never spammed (brief §6, Phase 3).
+// The guardian turns the raw vitals feed into care. When party mode is on and the
+// vitals look genuinely concerning (see assessVitals — low HR, or sustained high
+// HR while STILL, never just "racing on the dance floor"), the buddy reaches out
+// UNPROMPTED ("you ok?"); if the user stays silent, it escalates to their
+// emergency contacts. Episode state is in-memory: one open concern per phone so
+// the user is never spammed (brief §6, Phase 3).
 
 interface Concern {
   openedAt: number;
-  level: HrLevel;
+  reason: string;
   lastHr: number;
   escalated: boolean;
 }
@@ -46,10 +48,12 @@ export function createGuardian(gd: GuardianDeps): Guardian {
       return;
     }
 
-    const level = classifyHr(tick.hr);
+    // Assess the recent WINDOW (sustained + stillness), not a single reading —
+    // a high HR while moving must never alarm. The just-pushed tick is included.
+    const { concerning, reason } = assessVitals(await gd.store.getVitals(phone));
     const open = concerns.get(phone);
 
-    if (level === "normal") {
+    if (!concerning) {
       if (open) {
         concerns.delete(phone);
         log("guardian.recovered", { phone, hr: tick.hr });
@@ -59,15 +63,15 @@ export function createGuardian(gd: GuardianDeps): Guardian {
 
     if (open) {
       open.lastHr = tick.hr;
-      open.level = level;
+      open.reason = reason;
       return; // already concerned — don't text again, wait it out / escalate
     }
 
-    concerns.set(phone, { openedAt: Date.now(), level, lastHr: tick.hr, escalated: false });
-    log("guardian.concern", { phone, hr: tick.hr, level });
+    concerns.set(phone, { openedAt: Date.now(), reason, lastHr: tick.hr, escalated: false });
+    log("guardian.concern", { phone, hr: tick.hr, reason });
     await reach(
       phone,
-      `[guardian] their heart rate just read ${tick.hr} bpm — ${level === "high" ? "way too high" : "way too low"} — and party mode is on. reach out RIGHT NOW in your voice: short, warm, a little worried. ask if they're ok.`,
+      `[guardian] ${reason}, and party mode is on. reach out RIGHT NOW in your voice: short, warm, a little worried. ask if they're ok.`,
     );
   }
 
@@ -88,10 +92,10 @@ export function createGuardian(gd: GuardianDeps): Guardian {
       }
       if (now - c.openedAt >= config.guardian.escalateAfterMs) {
         c.escalated = true;
-        log("guardian.escalate", { phone, level: c.level });
+        log("guardian.escalate", { phone, reason: c.reason });
         await reach(
           phone,
-          `[guardian] you already texted them because their heart rate was ${c.level} and they have NOT replied. this is serious now — alert their emergency contacts with their location and get them help. drop the jokes.`,
+          `[guardian] you already checked in because ${c.reason}, and they STILL have not replied. this is serious now — alert their emergency contacts with their location and get them help. drop the jokes.`,
         ).catch((e) => log("guardian.error", { phone, err: String(e) }));
       }
     }

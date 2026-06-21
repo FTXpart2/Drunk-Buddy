@@ -28,6 +28,7 @@ export interface Config {
   guardian: {
     hrLow: number;
     hrHigh: number;
+    stillMotion: number;
     heartbeatMs: number;
     escalateAfterMs: number;
   };
@@ -62,8 +63,10 @@ export const config: Config = {
   publicUrl: process.env.PUBLIC_URL,
   healthLinkSecret: process.env.HEALTH_LINK_SECRET || "dev-insecure-health-secret",
   guardian: {
-    hrLow: Number(process.env.HR_LOW ?? 45),
-    hrHigh: Number(process.env.HR_HIGH ?? 130),
+    hrLow: Number(process.env.HR_LOW ?? 50),
+    hrHigh: Number(process.env.HR_HIGH ?? 140),
+    // motion at or below this = "still" (high HR only alarms when they're NOT moving)
+    stillMotion: Number(process.env.STILL_MOTION ?? 3),
     heartbeatMs: Number(process.env.HEARTBEAT_MS ?? 30000),
     escalateAfterMs: Number(process.env.ESCALATE_AFTER_MS ?? 300000),
   },
