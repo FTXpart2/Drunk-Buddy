@@ -6,8 +6,10 @@
   "main": "./src/index.ts",
   "dependencies": {
     "@anthropic-ai/sdk": "latest",
+    "@browserbasehq/sdk": "^2.14.1",
     "@browserbasehq/stagehand": "^3.6.0",
     "@drunk-buddy/channel": "workspace:*",
+    "playwright-core": "^1.55.1",
     "@drunk-buddy/shared": "workspace:*",
     "dotenv": "^16.4.5",
     "express": "^4.21.2",
