@@ -2,18 +2,20 @@ import { Stagehand } from "@browserbasehq/stagehand";
 import { z } from "zod";
 import { config } from "../config";
 import { log } from "../log";
+import { stagehandModel } from "../lib/stagehand-model";
 
 // Get the user a ride. Two layers: (1) drive the Uber web app in a cloud browser
-// (Browserbase + Stagehand) to read a live price, and (2) ALWAYS hand back a
-// pre-filled Uber deep link as the dependable path — live-site automation is
-// flaky, the deep link never is. Hidden behind the Actions interface (brief §3).
+// (Browserbase + Stagehand, planner = gpt-4o so act() actually works — Claude
+// 4.x act() is broken in Stagehand 3.6, stagehand#1986) to read a live price and
+// book, and (2) ALWAYS hand back a pre-filled Uber deep link as the dependable
+// fallback. Hidden behind the Actions interface (brief §3).
 //
 // AUTH: reuse a Browserbase Context (BROWSERBASE_CONTEXT_ID) logged into Uber
-// ONCE by hand (pnpm uber:login) so there's no OTP at runtime.
+// ONCE by hand (pnpm uber:login) so there's no OTP at runtime — and Uber only
+// shows prices when signed in.
 //
 // Hands-free booking happens only when BOTH gates are open: confirm=true (user
 // said yes) AND UBER_BOOK_FOR_REAL=true, and only if we actually read a price.
-// Otherwise the deep link is the booking path — one tap in the user's own app.
 const BOOK_FOR_REAL = process.env.UBER_BOOK_FOR_REAL === "true";
 
 export interface RideQuote {
@@ -26,8 +28,6 @@ export interface RideQuote {
   note?: string;
 }
 
-// Opens the user's Uber app to the right ride, one tap to confirm. Real (their
-// account + card + a real car) and 100% reliable, so it's our safety net.
 function uberDeepLink(destination: string, pickup?: string): string {
   const enc = encodeURIComponent;
   const p = pickup ? `pickup[formatted_address]=${enc(pickup)}` : "pickup=my_location";
@@ -44,9 +44,8 @@ export async function bookUber(
   const { confirm = false, pickup } = opts;
   const link = uberDeepLink(destination, pickup);
 
-  // Default to the instant, reliable one-tap deep link. The live browser
-  // automation (which reads an inline price) is slow + flaky against Uber's
-  // bot-hostile site, so it's opt-in via UBER_LIVE_QUOTE=true.
+  // The live browser automation is opt-in via UBER_LIVE_QUOTE=true; otherwise we
+  // return the instant, reliable deep link.
   const LIVE_QUOTE = process.env.UBER_LIVE_QUOTE === "true";
   if (!LIVE_QUOTE || !config.browserbase.apiKey || !config.browserbase.projectId) {
     return { ok: true, booked: false, link, note: "deep link" };
@@ -56,13 +55,7 @@ export async function bookUber(
     env: "BROWSERBASE",
     apiKey: config.browserbase.apiKey,
     projectId: config.browserbase.projectId,
-    // Stagehand's planner brain. We only use extract() (which parses fine on
-    // 4.x); act() is avoided because Stagehand 3.6's SDK can't parse 4.x
-    // structured output, and older Claudes are retired.
-    model: {
-      modelName: process.env.STAGEHAND_MODEL ?? "anthropic/claude-sonnet-4-6",
-      apiKey: config.anthropicApiKey,
-    },
+    ...stagehandModel(), // gpt-4o by default — the model whose act() Stagehand can parse
     // reuse the persisted, logged-in Uber session so we skip OTP:
     browserbaseSessionCreateParams: {
       projectId: config.browserbase.projectId,
@@ -74,14 +67,10 @@ export async function bookUber(
 
   try {
     await stagehand.init();
-    // Navigate straight to the pre-filled deep link — Uber sets pickup + dropoff
-    // from the URL itself, so we skip the flaky act()-driven form filling and
-    // land directly on the ride-options screen with prices.
-    await stagehand.context.newPage(link);
-    await new Promise((r) => setTimeout(r, 8000)); // let Uber render the options
+    await stagehand.context.newPage("https://m.uber.com/go/home");
 
     const auth = await stagehand.extract(
-      "is the user signed in and seeing ride options/prices (NOT a login/OTP screen)?",
+      "is the user signed in and able to request a ride (NOT on a login/OTP screen)?",
       z.object({ signedIn: z.boolean() }),
     );
     if (!auth.signedIn) {
@@ -89,27 +78,25 @@ export async function bookUber(
       return { ok: true, booked: false, link, note: "uber not logged in — deep link fallback" };
     }
 
-    // extract() parses fine on 4.x (unlike act()), so read the price directly.
+    // gpt-4o-driven act() works (unlike Claude 4.x). Set the route, then read the price.
+    if (pickup) {
+      await stagehand.act(`set the pickup location field to "${pickup}", then click the first address suggestion`);
+    }
+    await stagehand.act(`set the dropoff location field to "${destination}", then click the first address suggestion`);
+    await stagehand.act(`click the button to search / see ride prices`);
+    await new Promise((r) => setTimeout(r, 4000)); // let the ride options + prices render
+
     const quote = await stagehand.extract(
-      "from the ride options on screen, read the total price (e.g. $18.40) and the pickup ETA in minutes (e.g. 6 min) for the standard UberX. empty string for anything not visible.",
+      "from the ride options shown, read the total price (e.g. $18.40) and the pickup ETA in minutes (e.g. 6 min) for the standard UberX. empty string for anything not visible.",
       z.object({ eta: z.string(), price: z.string() }),
     );
     const price = clean(quote.price);
     const eta = clean(quote.eta);
 
-    // Booking is one deterministic Playwright click (act() is unusable on 4.x).
     let booked = false;
     if (confirm && BOOK_FOR_REAL && price) {
-      try {
-        const page: any = (stagehand as any).page;
-        await page
-          .getByRole("button", { name: /request|confirm|choose uberx|book/i })
-          .first()
-          .click({ timeout: 9000 });
-        booked = true;
-      } catch (e) {
-        log("ride.book_click_failed", { err: String(e) });
-      }
+      await stagehand.act("select the standard UberX option and confirm/request the ride");
+      booked = true;
     }
 
     log("ride.quote", { destination, eta, price, booked });

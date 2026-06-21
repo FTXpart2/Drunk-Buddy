@@ -2,6 +2,7 @@ import { Stagehand } from "@browserbasehq/stagehand";
 import { z } from "zod";
 import { config } from "../config";
 import { log } from "../log";
+import { stagehandModel } from "../lib/stagehand-model";
 
 // Drive Uber Eats in a Browserbase cloud browser via Stagehand v3 — same shape
 // as rides/uber.ts. Hidden behind the Actions interface; the agent never knows.
@@ -39,7 +40,7 @@ export async function orderEats(
     env: "BROWSERBASE",
     apiKey: config.browserbase.apiKey,
     projectId: config.browserbase.projectId,
-    model: { modelName: "anthropic/claude-sonnet-4-6", apiKey: config.anthropicApiKey },
+    ...stagehandModel(),
     browserbaseSessionCreateParams: {
       projectId: config.browserbase.projectId,
       ...(config.browserbase.contextId
