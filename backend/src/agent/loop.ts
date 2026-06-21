@@ -19,16 +19,17 @@ export interface Deps {
 
 // Build the buddy's current system prompt + recent conversation for a phone.
 async function buildContext(phone: string, store: Store) {
-  const [profile, friends, blocklist, party, convo, memory] = await Promise.all([
+  const [profile, friends, blocklist, party, convo, memory, location] = await Promise.all([
     store.getProfile(phone),
     store.getFriends(phone),
     store.getBlocklist(phone),
     store.getParty(phone),
     store.getConversation(phone),
     store.recallMemory(phone),
+    store.getLocation(phone),
   ]);
   const status = onboardingStatus(profile, friends);
-  const system = buildSystemPrompt({ profile, friends, blocklist, party, status, memory });
+  const system = buildSystemPrompt({ profile, friends, blocklist, party, status, memory, location });
   return { system, convo };
 }
 

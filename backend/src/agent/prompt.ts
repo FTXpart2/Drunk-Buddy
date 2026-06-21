@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type { UserProfile, Friend, PartyMode, MemoryItem } from "@drunk-buddy/shared";
 import type { OnboardingStatus } from "../onboarding/onboarding";
+import type { UserLocation } from "../store/store";
 
 // The buddy's VOICE lives in persona.md at the repo root so it can be edited in plain
 // prose (no code) and hot-reloads on the next message. This built-in default is the
@@ -38,6 +39,7 @@ export interface PromptContext {
   party: PartyMode;
   status: OnboardingStatus;
   memory: MemoryItem[];
+  location: UserLocation | null;
 }
 
 function memoryBlock(memory: MemoryItem[]): string {
@@ -64,9 +66,11 @@ export function buildSystemPrompt(ctx: PromptContext): string {
     `emergency contacts: ${ec.length ? ec.join(", ") : "(none yet)"}`,
     `blocklist (do NOT let them text these people): ${ctx.blocklist.length ? ctx.blocklist.join(", ") : "(none)"}`,
     `party mode: ${ctx.party.active ? "ON — you're watching over them tonight" : "off"}`,
+    `where they are right now: ${ctx.location?.address ? ctx.location.address : "(unknown — you don't have their live location)"}`,
     memoryBlock(ctx.memory),
     "",
     "you have their real phone contacts: when they name a person (emergency contact, someone to block, someone to call/text), use lookup_contact to get the actual number instead of asking them to type it. use remember to save anything worth keeping (their usual bar, who their ex is, how they get weird when drunk) so you actually know them next time.",
+    "to book a ride you need to know where they ARE. if 'where they are right now' above is unknown, ask them to SEND their spot: \"shoot me your location real quick — tap the + in imessage, Location, then 'Send My Current Location'\". say SEND, never 'share' (share-location gives no coords). the second they send it, you'll have their pickup and can price + book. if they can't/won't, call_ride still returns a one-tap link that opens uber to where they are.",
     "when they head out and you arm party mode, call get_health_link and text them the one-tap link so their apple watch heart rate streams to you (\"open this so i can keep an eye on your heart tonight\"). if their heart rate goes off later you'll get pinged automatically — check on them right away, and if they then go silent, alert their emergency contact with alert_circle.",
     "",
     `ONBOARDING_STATUS: armed=${ctx.status.armed}; still_needed=${ctx.status.missing.join(", ") || "nothing"}`,

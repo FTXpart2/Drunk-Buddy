@@ -23,6 +23,19 @@ function tempGuid(): string {
   return `db-${Date.now()}-${Math.round(Math.random() * 1e9)}`;
 }
 
+// Pull lat/lon out of a shared "Send My Current Location" vCard (.vcf text). The
+// card carries an Apple Maps URL (item1.URL;type=pref:https://maps.apple.com/?ll=LAT,LON);
+// older iOS uses ?q= or a bare geo:LAT,LON line.
+function parseVcardLatLon(vcf: string): { lat: number; lon: number } | null {
+  const ll = vcf.match(/maps\.apple\.com\/?[^\s]*?[?&]ll=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/i);
+  if (ll) return { lat: Number(ll[1]), lon: Number(ll[2]) };
+  const q = vcf.match(/maps\.apple\.com\/?[^\s]*?[?&]q=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/i);
+  if (q) return { lat: Number(q[1]), lon: Number(q[2]) };
+  const geo = vcf.match(/geo:(-?\d+(?:\.\d+)?)[,;](-?\d+(?:\.\d+)?)/i);
+  if (geo) return { lat: Number(geo[1]), lon: Number(geo[2]) };
+  return null;
+}
+
 export function createBlueBubblesChannel(config: BlueBubblesConfig): BlueBubblesChannel {
   let handler: InboundHandler | null = null;
   const method = config.method ?? "apple-script";
@@ -37,6 +50,30 @@ export function createBlueBubblesChannel(config: BlueBubblesConfig): BlueBubbles
     });
     if (!res.ok) {
       throw new Error(`BlueBubbles ${path} -> ${res.status}: ${await res.text()}`);
+    }
+  }
+
+  // A shared iMessage location pin arrives as a vCard attachment (filename CL.loc,
+  // uti public.vcard). Download + decode it to coords. Returns undefined for any
+  // non-location message; "Share My Location" (continuous Find My) has no coords.
+  async function tryParseLocation(data: any): Promise<{ lat: number; lon: number } | undefined> {
+    const atts: any[] = data?.attachments ?? [];
+    const hit = atts.find(
+      (a) =>
+        a?.uti === "public.vcard" ||
+        /cl\.loc/i.test(a?.transferName ?? "") ||
+        /vcard|vlocation/i.test(a?.mimeType ?? ""),
+    );
+    if (!hit?.guid) return undefined;
+    try {
+      const res = await fetch(
+        `${base}/api/v1/attachment/${encodeURIComponent(hit.guid)}/download?password=${pw}&original=true`,
+      );
+      if (!res.ok) return undefined;
+      const coords = parseVcardLatLon(await res.text());
+      return coords ?? undefined;
+    } catch {
+      return undefined;
     }
   }
 
@@ -62,6 +99,7 @@ export function createBlueBubblesChannel(config: BlueBubblesConfig): BlueBubbles
             chatGuid,
             text,
             attachment: att ? { name: att.transferName, mimeType: att.mimeType } : undefined,
+            location: await tryParseLocation(data),
             raw: body,
           };
           if (phone && handler) await handler(msg);

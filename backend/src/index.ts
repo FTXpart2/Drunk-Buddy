@@ -8,7 +8,7 @@ import { handleInbound, type Deps } from "./agent/loop";
 import { createGuardian } from "./vitals/guardian";
 import { createVitalsHandler } from "./vitals/ingest";
 import { watchPageHtml } from "./vitals/watch-page";
-import { createLocationHandler } from "./location/location";
+import { createLocationHandler, resolveAndStoreLocation } from "./location/location";
 import {
   createLocalChannel,
   createBlueBubblesChannel,
@@ -86,6 +86,18 @@ const guardian = createGuardian({
 
 channel.onMessage(async (msg) => {
   await store.setChatGuid(msg.phone, msg.chatGuid);
+  // They shared a "Send My Current Location" pin → store it as their live pickup,
+  // then let the agent continue (it likely just asked for it to book a ride).
+  if (msg.location) {
+    const addr = await resolveAndStoreLocation(store, msg.phone, msg.location.lat, msg.location.lon);
+    log("location.shared", { phone: msg.phone, address: addr });
+    const reply = await handleInbound(
+      { phone: msg.phone, text: "(i just shared my current location with you)" },
+      deps,
+    );
+    if (reply) await channel.sendText(msg.chatGuid, reply);
+    return;
+  }
   if (!msg.text) {
     await channel.sendText(msg.chatGuid, "can't hear voice notes yet — text me for now.");
     return;

@@ -14,6 +14,8 @@ export interface InboundMessage {
   phone: string;
   text?: string;
   attachment?: InboundAttachment;
+  /** Coords from a shared iMessage "Send My Current Location" pin, if present. */
+  location?: { lat: number; lon: number };
   /** where to send the reply (chats[].guid). */
   chatGuid: string;
   raw?: unknown;
