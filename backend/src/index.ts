@@ -14,6 +14,7 @@ import { createTts } from "./voice/tts";
 import { transcribeVoiceNote } from "./voice/bridge";
 import { toCafOpus } from "./voice/transcode";
 import { unlink } from "node:fs/promises";
+import { initTracing } from "./obs/tracing";
 import {
   createLocalChannel,
   createBlueBubblesChannel,
@@ -28,6 +29,7 @@ import { log } from "./log";
 // Entrypoint: serves the channel webhook (BlueBubbles or Twilio) or runs a polling
 // channel (Telegram / local), and wires every inbound message through the agent loop.
 // The agent is identical regardless of channel — that's the point of the interface.
+void initTracing(); // Arize/Phoenix observability — no-op unless keys are set
 const store = createStore();
 const llm = createLlm(config);
 const contacts = createContacts(config);
