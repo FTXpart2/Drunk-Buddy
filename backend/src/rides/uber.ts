@@ -251,13 +251,20 @@ async function fillLocationField(page: Page, value: string, label: string): Prom
     .click({ timeout: 20_000 });
   await sleep(1300); // opening a field can navigate to a full-screen search box
   await page.keyboard.type(value, { delay: 35 }); // real keystrokes -> autocomplete
-  // Wait for the debounced dropdown to settle to the FINAL typed string, then
-  // pick the top suggestion. (Keyboard select is reliable; the row-click wasn't.)
-  await page.getByRole("option").first().waitFor({ state: "visible", timeout: 7_000 }).catch(() => {});
-  await sleep(2600);
-  await page.keyboard.press("ArrowDown");
-  await page.keyboard.press("Enter");
-  await sleep(2400);
+  // The dropdown rows are [role="option"]; the FIRST is Uber's best match. CLICK
+  // it (keyboard ArrowDown+Enter skipped the pre-highlighted first row and landed
+  // on a same-numbered street in another state -> cross-country route). Prefer the
+  // option matching our city ("…, Berkeley, CA" -> "Berkeley") for extra safety.
+  const options = page.getByRole("option");
+  await options.first().waitFor({ state: "visible", timeout: 8_000 }).catch(() => {});
+  await sleep(900); // let the debounce settle to the final typed string
+  const city = value.split(",").map((s) => s.trim())[1] ?? "";
+  let target = city ? options.filter({ hasText: city }).first() : options.first();
+  if (!(await target.count().catch(() => 0))) target = options.first();
+  await target.click({ timeout: 8_000 }).catch(async () => {
+    await page.keyboard.press("Enter").catch(() => {});
+  });
+  await sleep(2200);
 }
 
 /** Click through "Search" → "one more step / confirm pickup" to the price list. */
