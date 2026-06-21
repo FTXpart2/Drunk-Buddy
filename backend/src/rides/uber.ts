@@ -385,31 +385,43 @@ function parsePriceEta(text: string): { price?: string; eta?: string } {
   return { price, eta };
 }
 
-/** Select UberX (if a chooser is shown) and confirm the request. */
+const BOOKED_RE = /finding|matching|arriving|on the way|driver is|your driver|requested|confirmed/i;
+
+/** Select UberX and click through Request + any confirm-pickup/payment step to
+ *  actually dispatch the ride. Screenshots each step to /tmp so a failed booking
+ *  is debuggable (this clicks a REAL request button — gated by UBER_BOOK_FOR_REAL). */
 async function requestRide(page: Page): Promise<boolean> {
-  // Select the UberX row first if it's a list.
+  // Select the UberX row (it's a button/list-item with the "UberX" label).
   await page
     .getByRole("button")
     .filter({ hasText: UBERX_RE })
+    .or(page.getByText(UBERX_RE))
     .first()
-    .click({ timeout: 5_000 })
+    .click({ timeout: 6_000 })
     .catch(() => {});
-  await sleep(800);
+  await sleep(1500);
+  await page.screenshot({ path: "/tmp/book-1.png" }).catch(() => {});
 
-  const requestBtn = page
-    .getByRole("button", { name: /request|confirm uberx|choose uberx|request uberx|select uberx|book/i })
-    .first();
-  const ok = await requestBtn
-    .click({ timeout: 8_000 })
-    .then(() => true)
-    .catch(() => false);
-  if (!ok) return false;
+  // Uber's confirm can be 1–2 steps (Request UberX -> Confirm pickup/payment).
+  for (let step = 0; step < 3; step++) {
+    if (await page.getByText(BOOKED_RE).first().isVisible().catch(() => false)) return true;
+    const btn = page
+      .getByRole("button", { name: /^(request|confirm|choose uberx|request uberx|book|continue|done)/i })
+      .first();
+    const clicked = await btn
+      .click({ timeout: 6_000 })
+      .then(() => true)
+      .catch(() => false);
+    await sleep(3_000);
+    await page.screenshot({ path: `/tmp/book-2-${step}.png` }).catch(() => {});
+    if (!clicked) break;
+  }
 
   // Confirm the ride actually dispatched (driver/arriving copy appears).
   return await page
-    .getByText(/finding (you )?a (driver|ride)|arriving|on the way|driver is|confirmed/i)
+    .getByText(BOOKED_RE)
     .first()
-    .waitFor({ state: "visible", timeout: 30_000 })
+    .waitFor({ state: "visible", timeout: 25_000 })
     .then(() => true)
     .catch(() => false);
 }
