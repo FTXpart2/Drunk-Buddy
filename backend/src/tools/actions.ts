@@ -66,16 +66,16 @@ export const browserbaseActions: Actions = {
   async callRide(input) {
     try {
       const quote = await bookUber(input.destination, { confirm: input.confirm, pickup: input.pickup });
-      if (!quote.ok) {
-        log("ride.fallback", { note: quote.note });
-        return stubActions.callRide(input);
+      const priceBit = quote.price ? `, ${quote.price}` : "";
+      const etaBit = quote.eta ? `, ${quote.eta} away` : "";
+      const details = `uberX to ${input.destination}${priceBit}${etaBit}`;
+      if (quote.booked) return `booked — ${details}. it's on the way.`;
+      if (quote.link) {
+        return quote.price
+          ? `${details} — tap to book: ${quote.link}`
+          : `your uber to ${input.destination} is ready — tap to book (it opens to your location): ${quote.link}`;
       }
-      const details = `uberX to ${input.destination}${quote.price ? `, ${quote.price}` : ""}${
-        quote.eta ? `, ${quote.eta} away` : ""
-      }`;
-      return quote.booked
-        ? `booked — ${details}. it's on the way.`
-        : `quote — ${details}. not booked yet; show them the details and ask if they want it.`;
+      return `quote — ${details}. ask them if they want it.`;
     } catch (err) {
       log("ride.error", { err: String(err) });
       return stubActions.callRide(input);
