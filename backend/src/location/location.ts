@@ -21,14 +21,31 @@ export function createLocationHandler(store: Store) {
     let address: string | undefined;
     try {
       const r = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`,
+        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&lat=${lat}&lon=${lon}`,
         { headers: { "User-Agent": "drunk-buddy/1.0" } },
       );
-      if (r.ok) address = ((await r.json()) as { display_name?: string }).display_name;
+      if (r.ok) {
+        const j = (await r.json()) as { display_name?: string; address?: Record<string, string> };
+        // Compose a SHORT, autocomplete-friendly address ("1939 Henry St, Berkeley, CA").
+        // The full Nominatim display_name (…Alameda County, 94104, United States) breaks
+        // Uber's address search — it can't match it, so it picks a wrong saved place.
+        address = cleanAddress(j.address) ?? j.display_name;
+      }
     } catch {
       // best-effort: coords alone still give us a map pin
     }
     await store.setLocation(phone, { lat, lon, address, ts: Date.now() });
     log("location.update", { phone, address: address ?? `${lat},${lon}` });
   };
+}
+
+// Turn Nominatim's verbose address object into a clean "house road, city, ST"
+// string that a ride app's autocomplete actually resolves to one good result.
+function cleanAddress(a?: Record<string, string>): string | undefined {
+  if (!a) return undefined;
+  const street = [a.house_number, a.road].filter(Boolean).join(" ");
+  const city = a.city || a.town || a.village || a.hamlet || a.suburb || a.neighbourhood;
+  const state = a["ISO3166-2-lvl4"]?.split("-")[1] || a.state; // "US-CA" -> "CA"
+  const out = [street, city, state].filter(Boolean).join(", ");
+  return out || undefined;
 }

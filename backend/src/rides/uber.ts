@@ -110,6 +110,11 @@ export async function bookUber(
     ? uberProductUrl(dropPlace, pickupPlace)
     : uberDeepLink(destination, pickup);
 
+  // On "yes" with auto-book OFF, don't re-run the slow (~60-90s) automation — the
+  // quote already happened; just hand the link to confirm in their own app.
+  if (confirm && !BOOK_FOR_REAL) {
+    return { ok: true, booked: false, link, note: "confirm: deep link (auto-book off)" };
+  }
   // Live automation is opt-in. Without it (or without creds) return the link.
   const LIVE_QUOTE = process.env.UBER_LIVE_QUOTE === "true";
   if (!LIVE_QUOTE || !config.browserbase.apiKey || !config.browserbase.projectId) {
@@ -330,7 +335,9 @@ async function readUberXQuote(
     const anyText = await anyRow
       .evaluate((el) => (el.closest("li,[role='button'],[role='listitem']") ?? el).textContent ?? "")
       .catch(() => "");
-    if (anyText && PRICE_RE.test(anyText)) {
+    // Require an ETA next to the price — a real ride row has both ("$12 · 9 min").
+    // A lone "$" (promos, banners) is NOT a quote (that's the bogus "$8" bug).
+    if (anyText && PRICE_RE.test(anyText) && ETA_RE.test(anyText)) {
       // Keep polling briefly for the labelled UberX row, but this is a valid quote.
       const parsed = parsePriceEta(anyText);
       if (parsed.price) {
