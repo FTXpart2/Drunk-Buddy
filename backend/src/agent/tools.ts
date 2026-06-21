@@ -179,7 +179,9 @@ export async function dispatchTool(
       const pickupPlace = here
         ? { latitude: here.lat, longitude: here.lon, addressLine1: here.address ?? "current location" }
         : undefined;
-      const dropCoords = pickupPlace ? await geocode(destination) : null;
+      // Geocode the destination BIASED to where they are, so "2400 waring st"
+      // resolves to their city — not a same-named street across the country.
+      const dropCoords = here ? await geocode(destination, { lat: here.lat, lon: here.lon }) : null;
       const dropPlace = dropCoords
         ? { latitude: dropCoords.lat, longitude: dropCoords.lon, addressLine1: destination }
         : undefined;

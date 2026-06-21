@@ -380,6 +380,19 @@ async function readUberXQuote(
   const deadline = Date.now() + timeoutMs;
 
   while (Date.now() < deadline) {
+    // If Uber threw an error screen (e.g. a route it can't price), STOP — don't
+    // scrape a stray number off an error page and report it as a real quote.
+    if (
+      await page
+        .getByText(/there was an error|something is not right|try changing the (pickup|drop)/i)
+        .first()
+        .isVisible()
+        .catch(() => false)
+    ) {
+      log("ride.uber_error_page", {});
+      return {};
+    }
+
     // Prefer the row that actually says "UberX".
     const uberxRow = page
       .getByRole("button")

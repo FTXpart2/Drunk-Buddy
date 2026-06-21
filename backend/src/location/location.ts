@@ -34,12 +34,21 @@ export async function resolveAndStoreLocation(
 
 // Forward-geocode an address string to coords (so the ride can use the EXACT
 // coordinate path — drops pins precisely, no autocomplete drift). null on miss.
-export async function geocode(query: string): Promise<{ lat: number; lon: number } | null> {
+export async function geocode(
+  query: string,
+  near?: { lat: number; lon: number },
+): Promise<{ lat: number; lon: number } | null> {
   try {
-    const r = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(query)}`,
-      { headers: { "User-Agent": "drunk-buddy/1.0" } },
-    );
+    let url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(query)}`;
+    if (near) {
+      // Bias HARD to within ~40km of the user (bounded) so a destination like
+      // "2400 waring st" resolves to THEIR city, not a same-named street across
+      // the country. If nothing local matches, returns null and the ride flow
+      // falls back to typed search / the deep link rather than a wrong coast.
+      const d = 0.4;
+      url += `&bounded=1&viewbox=${near.lon - d},${near.lat - d},${near.lon + d},${near.lat + d}`;
+    }
+    const r = await fetch(url, { headers: { "User-Agent": "drunk-buddy/1.0" } });
     if (!r.ok) return null;
     const j = (await r.json()) as Array<{ lat: string; lon: string }>;
     return j[0] ? { lat: Number(j[0].lat), lon: Number(j[0].lon) } : null;
