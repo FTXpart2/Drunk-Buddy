@@ -33,10 +33,9 @@ export function FitsSection() {
         </div>
 
         <p className="mx-auto mt-12 max-w-xl text-pretty text-lg leading-relaxed text-muted-foreground">
-          <span className="text-muted-foreground/70">(1)</span> It lives in the apps you already use
-          to text your friends{" "}
-          <span className="text-foreground">(Messages, WhatsApp, Telegram)</span>, with the judgment
-          of a sober best friend and the patience of one who never gets tired of you.
+          <span className="text-muted-foreground/70">(1)</span> It lives right in your{" "}
+          <span className="text-foreground">iMessage</span>, with the judgment of a sober best
+          friend and the patience of one who never gets tired of you.
         </p>
       </div>
     </section>

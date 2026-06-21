@@ -50,7 +50,7 @@ export function Hero() {
         </div>
 
         <p className="mt-4 text-sm text-muted-foreground">
-          Free to start · No app download · Works in Messages, WhatsApp &amp; Telegram
+          Free to start · No app download · Works in iMessage
         </p>
 
         {/* phone */}
