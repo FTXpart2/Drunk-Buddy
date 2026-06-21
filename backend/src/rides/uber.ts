@@ -78,13 +78,20 @@ export async function bookUber(
       return { ok: true, booked: false, link, note: "uber not logged in — deep link fallback" };
     }
 
-    // gpt-4o-driven act() works (unlike Claude 4.x). Set the route, then read the price.
+    // gpt-4o-driven act() works (unlike Claude 4.x). Fill the route step by step —
+    // autocomplete needs: focus the field, type, WAIT for suggestions, pick one.
     if (pickup) {
-      await stagehand.act(`set the pickup location field to "${pickup}", then click the first address suggestion`);
+      await stagehand.act(`click the pickup location input field`);
+      await stagehand.act(`type "${pickup}" into the location search box`);
+      await new Promise((r) => setTimeout(r, 3000)); // wait for autocomplete suggestions
+      await stagehand.act(`click the first location suggestion in the dropdown list`);
     }
-    await stagehand.act(`set the dropoff location field to "${destination}", then click the first address suggestion`);
+    await stagehand.act(`click the dropoff / destination location input field`);
+    await stagehand.act(`type "${destination}" into the location search box`);
+    await new Promise((r) => setTimeout(r, 3000));
+    await stagehand.act(`click the first location suggestion in the dropdown list`);
     await stagehand.act(`click the button to search / see ride prices`);
-    await new Promise((r) => setTimeout(r, 4000)); // let the ride options + prices render
+    await new Promise((r) => setTimeout(r, 8000)); // prices take several seconds to load
 
     const quote = await stagehand.extract(
       "from the ride options shown, read the total price (e.g. $18.40) and the pickup ETA in minutes (e.g. 6 min) for the standard UberX. empty string for anything not visible.",
