@@ -54,7 +54,7 @@ export class VoiceSession {
           output: { encoding: "linear16", sample_rate: 16000, container: "none" },
         },
         agent: {
-          listen: { provider: { type: "deepgram", model: "nova-2" } },
+          listen: { provider: { type: "deepgram", model: "nova-3" } },
           think: {
             provider: { type: "anthropic", model },
             endpoint: {
@@ -115,7 +115,7 @@ export class VoiceSession {
     });
 
     agent.on(AgentEvents.Error, (err: any) => {
-      log("voice.deepgram.error", { phone, error: String(err) });
+      log("voice.deepgram.error", { phone, error: JSON.stringify(err, null, 2) });
     });
 
     agent.on(AgentEvents.Close, () => {

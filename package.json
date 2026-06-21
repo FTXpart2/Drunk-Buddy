@@ -5,6 +5,7 @@
   "scripts": {
     "dev:chat": "tsx backend/src/dev/chat.ts",
     "smoke": "tsx backend/src/dev/smoke.ts",
+    "smoke:voice": "tsx backend/src/dev/voice-smoke.ts",
     "dev": "tsx backend/src/index.ts",
     "channel:register": "tsx channel/src/register-webhook.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
