@@ -3,7 +3,7 @@
 // deep links, ElevenLabs, the vitals sim, etc. without touching the agent.
 import { config } from "../config";
 import { log } from "../log";
-import { bookUber, type RidePlace } from "../rides/uber";
+import { bookUber, type RidePlace, UBER_APP_LINK } from "../rides/uber";
 import { orderEats } from "../food/ubereats";
 
 export interface AlertContact {
@@ -82,7 +82,14 @@ export const browserbaseActions: Actions = {
       const etaBit = quote.eta ? `, ${quote.eta} out` : "";
       const details = `uberX to ${input.destination}${priceBit}${etaBit}`;
       // Booked it for real (confirm + UBER_BOOK_FOR_REAL + a real price were all true).
-      if (quote.booked) return `booked ${details}. your driver's on the way — check your uber app.`;
+      // Relay the car/driver/eta we read off the matched-driver screen + an app link.
+      if (quote.booked) {
+        const carBits = [quote.car, quote.plate && `plate ${quote.plate}`].filter(Boolean).join(", ");
+        const who = quote.driver ? `${quote.driver}'s your driver` : "your driver's on the way";
+        const when = quote.eta ? `, ${quote.eta} out` : "";
+        const carLine = carBits ? ` ${carBits}.` : "";
+        return `booked!${carLine} ${who}${when}. track it in your uber app: ${UBER_APP_LINK}`;
+      }
       // They said yes, but auto-book is off (or it fell back) — hand the pre-filled link to confirm in their app.
       if (input.confirm) {
         return quote.link

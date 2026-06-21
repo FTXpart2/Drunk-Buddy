@@ -45,7 +45,23 @@ export interface RideQuote {
   /** Pre-filled Uber link — opens their app/site to the destination. */
   link?: string;
   note?: string;
+  /** Driver/car details read off Uber's matched-driver screen after booking. */
+  driver?: string;
+  car?: string;
+  plate?: string;
 }
+
+/** What we read off the screen after a real booking dispatches. */
+interface RideDetails {
+  booked: boolean;
+  driver?: string;
+  car?: string;
+  plate?: string;
+  eta?: string;
+}
+
+/** A bare Uber link that opens the APP (not an auth/action page) to the live trip. */
+export const UBER_APP_LINK = "https://m.uber.com/go/home";
 
 /** A geocoded place — pass these when you have coordinates (skips autocomplete). */
 export interface RidePlace {
@@ -193,13 +209,23 @@ export async function bookUber(
     const eta = clean(quote.eta);
 
     // ---- 8. Gated booking ----
-    let booked = false;
+    let det: RideDetails = { booked: false };
     if (confirm && BOOK_FOR_REAL && price) {
-      booked = await requestRide(page);
+      det = await requestRide(page);
     }
 
-    log("ride.quote", { destination, eta, price, booked });
-    return { ok: true, booked, eta, price, link, note: price ? undefined : "no price rendered — deep link fallback" };
+    log("ride.quote", { destination, eta, price, booked: det.booked, driver: det.driver, car: det.car, plate: det.plate });
+    return {
+      ok: true,
+      booked: det.booked,
+      eta: det.eta ?? eta,
+      price,
+      link,
+      driver: det.driver,
+      car: det.car,
+      plate: det.plate,
+      note: price ? undefined : "no price rendered — deep link fallback",
+    };
   } catch (err) {
     log("ride.error", { err: String(err) });
     return { ok: true, booked: false, link, note: "automation hiccup — deep link fallback" };
@@ -386,18 +412,24 @@ function parsePriceEta(text: string): { price?: string; eta?: string } {
   return { price, eta };
 }
 
-const BOOKED_RE = /finding|matching|arriving|on the way|driver is|your driver|requested|confirmed/i;
+// The request went through once ANY of these appear (the spinner "Requesting
+// your ride", then the matched-driver screen).
+const DISPATCHED_RE =
+  /requesting your ride|finding (you )?a?\s*(driver|ride)|matching you|your driver|driver is|arriving|on (the |your )?way|you're all set|en route|confirmed|requested/i;
 
-/** Select UberX and click through Request + any confirm-pickup/payment step to
- *  actually dispatch the ride. Screenshots each step to /tmp so a failed booking
- *  is debuggable (this clicks a REAL request button — gated by UBER_BOOK_FOR_REAL). */
-async function requestRide(page: Page): Promise<boolean> {
+/** Select UberX and click Request to actually dispatch the ride, then wait for the
+ *  matched driver and read the car/driver/plate/ETA off the screen. Gated by
+ *  UBER_BOOK_FOR_REAL (this books a REAL car). Screenshots each pass to /tmp. */
+async function requestRide(page: Page): Promise<RideDetails> {
   // UberX is pre-selected (the bottom button reads "Request UberX"), so DON'T
   // click the option rows or the price — that opens the "Price Breakdown" modal
-  // and blocks the button. Just dismiss any modal and click Request, then handle
-  // a follow-up Confirm (pickup/payment) step. Screenshots each pass for debugging.
+  // and blocks the button. Just dismiss any modal and click Request/Confirm.
+  let dispatched = false;
   for (let step = 0; step < 4; step++) {
-    if (await page.getByText(BOOKED_RE).first().isVisible().catch(() => false)) return true;
+    if (await page.getByText(DISPATCHED_RE).first().isVisible().catch(() => false)) {
+      dispatched = true;
+      break;
+    }
     await page.keyboard.press("Escape").catch(() => {});
     await page
       .getByRole("button", { name: /^close$/i })
@@ -417,11 +449,64 @@ async function requestRide(page: Page): Promise<boolean> {
     if (!clicked && step > 0) break;
   }
 
-  // Confirm the ride actually dispatched (driver/arriving copy appears).
-  return await page
-    .getByText(BOOKED_RE)
+  if (!dispatched) {
+    dispatched = await page
+      .getByText(DISPATCHED_RE)
+      .first()
+      .waitFor({ state: "visible", timeout: 25_000 })
+      .then(() => true)
+      .catch(() => false);
+  }
+  if (!dispatched) return { booked: false };
+
+  // The ride is booked. Wait (capped) for Uber to MATCH a driver, then read the
+  // car/driver/plate/ETA. Always returns booked:true even if details don't load.
+  await page
+    .getByText(/min away|arriving|on (the|your) way|license|plate/i)
     .first()
-    .waitFor({ state: "visible", timeout: 25_000 })
-    .then(() => true)
-    .catch(() => false);
+    .waitFor({ state: "visible", timeout: 30_000 })
+    .catch(() => {});
+  await sleep(2_500);
+  await page.screenshot({ path: "/tmp/booked.png" }).catch(() => {});
+  const details = await captureRideDetails(page);
+  // Log the raw screen text so the exact driver-card fields can be locked in.
+  const screen = await page
+    .evaluate(() => ((globalThis as any).document?.body?.innerText ?? "").replace(/\n+/g, " | ").slice(0, 900))
+    .catch(() => "");
+  log("ride.booked", { ...details, screen });
+  return { booked: true, ...details };
+}
+
+/** Best-effort read of the matched-driver card (refined from real screen text). */
+async function captureRideDetails(
+  page: Page,
+): Promise<{ driver?: string; car?: string; plate?: string; eta?: string }> {
+  return await page
+    .evaluate(() => {
+      const doc = (globalThis as any).document;
+      const txt: string = (doc?.body?.innerText ?? "").replace(/ /g, " ");
+      const lines = txt
+        .split("\n")
+        .map((l: string) => l.trim())
+        .filter(Boolean);
+      const out: { driver?: string; car?: string; plate?: string; eta?: string } = {};
+      const eta = txt.match(/(\d+)\s*min(?:ute)?s?\s*(?:away|out)?/i);
+      if (eta) out.eta = `${eta[1]} min`;
+      // License plate: a 5–8 char token with BOTH letters and digits.
+      const plate = lines.find(
+        (l: string) =>
+          /^[A-Z0-9]{5,8}$/.test(l.replace(/\s/g, "")) && /[A-Z]/.test(l) && /\d/.test(l),
+      );
+      if (plate) out.plate = plate.replace(/\s/g, "");
+      // Car: a short line containing a color word ("White Toyota Prius").
+      const car = lines.find(
+        (l: string) =>
+          /\b(white|black|silver|gray|grey|blue|red|green|gold|beige|brown|tan)\b/i.test(l) &&
+          l.split(/\s+/).length <= 5 &&
+          l.length < 40,
+      );
+      if (car) out.car = car;
+      return out;
+    })
+    .catch(() => ({}));
 }
