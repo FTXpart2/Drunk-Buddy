@@ -54,7 +54,10 @@ export function createLocationHandler(store: Store) {
 // string that a ride app's autocomplete actually resolves to one good result.
 function cleanAddress(a?: Record<string, string>): string | undefined {
   if (!a) return undefined;
-  const street = [a.house_number, a.road].filter(Boolean).join(" ");
+  // Nominatim can return a house-number RANGE ("2032-2034" / "2032,2034") that
+  // garbles a ride app's address search — take the FIRST number only.
+  const num = (a.house_number ?? "").match(/\d+/)?.[0] ?? "";
+  const street = [num, a.road].filter(Boolean).join(" ");
   const city = a.city || a.town || a.village || a.hamlet || a.suburb || a.neighbourhood;
   // street + city ONLY (no state / zip / country) — keep it short; the ride flow
   // matches the autocomplete option by street number + name, so it stays precise.

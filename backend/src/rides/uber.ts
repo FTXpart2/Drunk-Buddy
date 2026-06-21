@@ -258,24 +258,25 @@ async function fillLocationField(page: Page, value: string, label: string): Prom
   const options = page.getByRole("option");
   await options.first().waitFor({ state: "visible", timeout: 8_000 }).catch(() => {});
   await sleep(900); // let the debounce settle to the final typed string
-  // Click the option that best matches what we TYPED — the street number AND the
-  // street name (e.g. "1902" + "Henry") — not just the city, so we never grab a
-  // same-numbered street in another town. Fall back to city, then the first row.
+  // Match the option to what we TYPED — the street NUMBER and a street-name WORD
+  // (e.g. "2032" + "Hearst"). NEVER blindly take the first row: that grabbed a
+  // same-numbered street 3000 miles away. If nothing matches, bail (throw) so
+  // bookUber falls back to the pre-filled deep link instead of a wrong location.
   const street = (value.split(",")[0] ?? "").trim();
-  const num = street.match(/^\d+/)?.[0] ?? "";
-  const word = street.replace(/^\d+\s*/, "").split(/\s+/)[0] ?? "";
+  const num = street.match(/\d+/)?.[0] ?? "";
+  const word = street.replace(/[\d,]+/g, " ").trim().split(/\s+/)[0] ?? "";
   const city = value.split(",").map((s) => s.trim())[1] ?? "";
-  let target = options;
-  if (num) target = target.filter({ hasText: num });
-  if (word) target = target.filter({ hasText: word });
-  let chosen = target.first();
-  if (!(await chosen.count().catch(() => 0))) {
-    chosen = city ? options.filter({ hasText: city }).first() : options.first();
-    if (!(await chosen.count().catch(() => 0))) chosen = options.first();
+  let chosen = options;
+  if (num) chosen = chosen.filter({ hasText: num });
+  if (word) chosen = chosen.filter({ hasText: word });
+  let target = chosen.first();
+  if (!(await target.count().catch(() => 0)) && city) {
+    target = options.filter({ hasText: city }).first(); // same-city fallback
   }
-  await chosen.click({ timeout: 8_000 }).catch(async () => {
-    await page.keyboard.press("Enter").catch(() => {});
-  });
+  if (!(await target.count().catch(() => 0))) {
+    throw new Error(`no matching suggestion for "${value}" — falling back to link`);
+  }
+  await target.click({ timeout: 8_000 });
   await sleep(2200);
 }
 
