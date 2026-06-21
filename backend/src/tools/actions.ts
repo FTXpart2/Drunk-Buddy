@@ -11,7 +11,7 @@ export interface AlertContact {
 }
 
 export interface Actions {
-  callRide(input: { phone: string; destination: string }): Promise<string>;
+  callRide(input: { phone: string; destination: string; confirm?: boolean }): Promise<string>;
   orderFood(input: { phone: string; query: string }): Promise<string>;
   alertCircle(input: {
     phone: string;
@@ -29,8 +29,10 @@ export interface Actions {
 }
 
 export const stubActions: Actions = {
-  async callRide({ destination }) {
-    return `[stub] ride booked to ${destination} — blue Civic, 4 min out`;
+  async callRide({ destination, confirm }) {
+    return confirm
+      ? `[stub] booked — uberX to ${destination}, blue Civic, 4 min out, $14.20`
+      : `[stub] quote — uberX to ${destination}, $14.20, 4 min away (not booked; show them and ask to confirm)`;
   },
   async orderFood({ query }) {
     return `[stub] ordered ${query} — eta ~25 min`;
@@ -60,15 +62,17 @@ export const browserbaseActions: Actions = {
   ...stubActions,
   async callRide(input) {
     try {
-      const quote = await bookUber(input.destination);
+      const quote = await bookUber(input.destination, { confirm: input.confirm });
       if (!quote.ok) {
         log("ride.fallback", { note: quote.note });
         return stubActions.callRide(input);
       }
-      const verb = quote.booked ? "uber's on the way" : "got you a quote — uber's";
-      return `${verb} ${quote.eta ?? "a few min"} out to ${input.destination}${
-        quote.price ? ` (${quote.price})` : ""
-      }. drink some water ok?`;
+      const details = `uberX to ${input.destination}${quote.price ? `, ${quote.price}` : ""}${
+        quote.eta ? `, ${quote.eta} away` : ""
+      }`;
+      return quote.booked
+        ? `booked — ${details}. it's on the way.`
+        : `quote — ${details}. not booked yet; show them the details and ask if they want it.`;
     } catch (err) {
       log("ride.error", { err: String(err) });
       return stubActions.callRide(input);

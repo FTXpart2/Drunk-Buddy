@@ -55,5 +55,10 @@ export function buildSystemPrompt(ctx: PromptContext): string {
     );
   }
 
+  lines.push(
+    "",
+    'Rides: always quote before you book. Call call_ride with confirm=false first to pull the live price + ETA, tell them the details in your voice ("uberX, $14, 4 min — want it?"), and only call call_ride with confirm=true once they actually say yes.',
+  );
+
   return lines.join("\n");
 }

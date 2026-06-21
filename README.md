@@ -53,6 +53,11 @@ you want effects/tapbacks/native audio bubbles.
 hidden behind the `Actions` interface — when `BROWSERBASE_API_KEY` is unset the agent falls
 back to the stub, so dev/smoke/tests are unaffected.
 
+**Quote, then confirm.** The buddy never silently books. It first pulls a live price + ETA
+(`call_ride confirm=false`), texts the details — "uberX, $14, 4 min — want it?" — and only
+books (`call_ride confirm=true`) after the user says yes. A real car is summoned only when
+BOTH gates are open: the user confirmed AND `UBER_BOOK_FOR_REAL=true`.
+
 One-time setup:
 
 1. Sign up at [browserbase.com], grab `BROWSERBASE_API_KEY` + `BROWSERBASE_PROJECT_ID`.
@@ -63,8 +68,9 @@ One-time setup:
 3. `pnpm ride:test "1 Telegraph Ave, Berkeley"` — drives the flow in isolation and prints
    the quote. Watch it live in the Browserbase session inspector and tune the `act()`
    prompts in `backend/src/rides/uber.ts` against the live site.
-4. `UBER_BOOK_FOR_REAL=false` (default) stops at the quote — it does **not** book. Flip to
-   `true` only once auth + payment are verified, so a flaky run can't sink the demo (§13).
+4. `UBER_BOOK_FOR_REAL=false` (default) means it will quote but never tap Confirm, even if
+   the user says yes — so it never books a real car. Flip to `true` only once auth + payment
+   are verified, so a flaky run can't sink the demo (§13).
 
 ## State
 

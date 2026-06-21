@@ -11,9 +11,10 @@ import { log } from "../log";
 // Browserbase Context (BROWSERBASE_CONTEXT_ID) that was logged in ONCE by hand,
 // so there's no OTP at runtime. See README "Live rides" for the one-time setup.
 //
-// DEMO-SAFE: by default we stop at the quote and DO NOT confirm the booking.
-// Set UBER_BOOK_FOR_REAL=true only once auth + payment are verified on a test
-// account (brief §4: a flaky booking can't be allowed to kill the live demo).
+// Booking only happens when BOTH gates are open: the agent passes confirm=true
+// (the user said yes to the quote) AND UBER_BOOK_FOR_REAL=true (the master money
+// switch). Either off → we drive to the quote but never tap Confirm. This keeps
+// a flaky run from booking a real car mid-demo (brief §4).
 const BOOK_FOR_REAL = process.env.UBER_BOOK_FOR_REAL === "true";
 
 export interface RideQuote {
@@ -24,7 +25,11 @@ export interface RideQuote {
   note?: string;
 }
 
-export async function bookUber(destination: string, pickup?: string): Promise<RideQuote> {
+export async function bookUber(
+  destination: string,
+  opts: { confirm?: boolean; pickup?: string } = {},
+): Promise<RideQuote> {
+  const { confirm = false, pickup } = opts;
   if (!config.browserbase.apiKey || !config.browserbase.projectId) {
     return { ok: false, booked: false, note: "browserbase not configured" };
   }
@@ -69,7 +74,7 @@ export async function bookUber(destination: string, pickup?: string): Promise<Ri
     );
 
     let booked = false;
-    if (BOOK_FOR_REAL) {
+    if (confirm && BOOK_FOR_REAL) {
       await stagehand.act("confirm and request the Uber");
       booked = true;
     }

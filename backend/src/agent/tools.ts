@@ -50,10 +50,17 @@ export const TOOLS = [
   },
   {
     name: "call_ride",
-    description: "Book a ride to get the user somewhere (usually home). Just do it.",
+    description:
+      "Get the user a ride home. TWO STEPS: first call with confirm=false to pull a live price + ETA quote — then show them the details and ask if they want it. Only after they say yes, call again with confirm=true to actually book. Never book without quoting and getting a yes first.",
     input_schema: {
       type: "object",
-      properties: { destination: { type: "string" } },
+      properties: {
+        destination: { type: "string" },
+        confirm: {
+          type: "boolean",
+          description: "false = just quote the price/ETA so you can ask them; true = they approved, book it now",
+        },
+      },
       required: ["destination"],
     },
   },
@@ -142,7 +149,7 @@ export async function dispatchTool(
       if (/^home$/i.test(destination.trim())) {
         destination = (await store.getProfile(phone))?.home_address ?? destination;
       }
-      return actions.callRide({ phone, destination });
+      return actions.callRide({ phone, destination, confirm: !!input.confirm });
     }
 
     case "order_food":
