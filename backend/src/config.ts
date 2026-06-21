@@ -14,13 +14,20 @@ export interface Config {
     method: "apple-script" | "private-api";
   };
   publicUrl?: string;
+  healthLinkSecret: string;
+  guardian: {
+    hrLow: number;
+    hrHigh: number;
+    heartbeatMs: number;
+    escalateAfterMs: number;
+  };
 }
 
 export const config: Config = {
   channel: process.env.CHANNEL === "bluebubbles" ? "bluebubbles" : "local",
   port: Number(process.env.PORT ?? 8787),
   anthropicApiKey: process.env.ANTHROPIC_API_KEY || undefined,
-  model: process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-6",
+  model: process.env.ANTHROPIC_MODEL ?? "claude-haiku-4-5",
   redisUrl: process.env.REDIS_URL || undefined,
   bluebubbles: {
     serverUrl: process.env.BLUEBUBBLES_SERVER_URL,
@@ -28,4 +35,11 @@ export const config: Config = {
     method: process.env.BLUEBUBBLES_METHOD === "private-api" ? "private-api" : "apple-script",
   },
   publicUrl: process.env.PUBLIC_URL,
+  healthLinkSecret: process.env.HEALTH_LINK_SECRET || "dev-insecure-health-secret",
+  guardian: {
+    hrLow: Number(process.env.HR_LOW ?? 45),
+    hrHigh: Number(process.env.HR_HIGH ?? 130),
+    heartbeatMs: Number(process.env.HEARTBEAT_MS ?? 30000),
+    escalateAfterMs: Number(process.env.ESCALATE_AFTER_MS ?? 300000),
+  },
 };

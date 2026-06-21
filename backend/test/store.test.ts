@@ -17,6 +17,13 @@ describe("MemoryStore", () => {
     expect(await s.getBlocklist("+1")).toEqual(["jordan"]);
   });
 
+  it("persists the chatGuid so the guardian can reach the user out of band", async () => {
+    const s = new MemoryStore();
+    expect(await s.getChatGuid("+1")).toBeNull();
+    await s.setChatGuid("+1", "iMessage;-;+1");
+    expect(await s.getChatGuid("+1")).toBe("iMessage;-;+1");
+  });
+
   it("caps the conversation buffer at 20", async () => {
     const s = new MemoryStore();
     for (let i = 0; i < 25; i++) await s.appendConversation("+1", { role: "user", content: String(i) });

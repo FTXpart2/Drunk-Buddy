@@ -87,6 +87,13 @@ export class RedisStore implements Store {
     await this.r.set(`lastseen:${phone}`, String(ts));
   }
 
+  async getChatGuid(phone: string) {
+    return this.r.get(`chatguid:${phone}`);
+  }
+  async setChatGuid(phone: string, chatGuid: string) {
+    await this.r.set(`chatguid:${phone}`, chatGuid);
+  }
+
   async getConversation(phone: string) {
     return this.getJson<ChatMessage[]>(`convo:${phone}`, []);
   }

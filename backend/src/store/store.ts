@@ -31,6 +31,11 @@ export interface Store {
   getLastSeen(phone: string): Promise<number | null>;
   setLastSeen(phone: string, ts: number): Promise<void>;
 
+  // Where to send an UNPROMPTED message — the guardian/heartbeat reaches the
+  // user out of band, so the reply target (chatGuid) is persisted per phone.
+  getChatGuid(phone: string): Promise<string | null>;
+  setChatGuid(phone: string, chatGuid: string): Promise<void>;
+
   getConversation(phone: string): Promise<ChatMessage[]>;
   appendConversation(phone: string, msg: ChatMessage): Promise<void>;
 }

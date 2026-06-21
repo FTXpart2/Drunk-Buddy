@@ -20,7 +20,7 @@ pnpm typecheck
 ```
 
 Without `ANTHROPIC_API_KEY`, the loop runs a scripted stand-in so it still works end to
-end. Set the key (model `claude-sonnet-4-6`) for the real buddy.
+end. Set the key (model `claude-haiku-4-5`) for the real buddy.
 
 ## Layout (pnpm monorepo)
 

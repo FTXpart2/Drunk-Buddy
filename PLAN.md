@@ -30,7 +30,7 @@ Goal: a real, demoable product — a friend in your texts that knows you, onboar
       a required-field gate (`onboardingStatus`)
 - [x] Context load/persist around each turn; `remember`/`recall` wired to Store
 - [x] Light tests for the spine (store, onboarding gate, tool dispatch)
-- [ ] Personality QA pass on a real transcript with `claude-sonnet-4-6`  *(needs ANTHROPIC_API_KEY)*
+- [ ] Personality QA pass on a real transcript with `claude-haiku-4-5`  *(needs ANTHROPIC_API_KEY)*
 - **Checkpoint:** I can text the buddy, it replies with personality, knows who I am, and
   onboards me in-thread. **End of phase = demoable product.** <- session stops here.
 

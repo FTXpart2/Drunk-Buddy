@@ -4,6 +4,9 @@ import { createStore } from "./store";
 import { createLlm } from "./agent/llm";
 import { stubActions } from "./tools/actions";
 import { handleInbound, type Deps } from "./agent/loop";
+import { createGuardian } from "./vitals/guardian";
+import { createVitalsHandler } from "./vitals/ingest";
+import { watchPageHtml } from "./vitals/watch-page";
 import { createLocalChannel, createBlueBubblesChannel, type BlueBubblesChannel } from "@drunk-buddy/channel";
 import type { Channel } from "@drunk-buddy/shared";
 import { log } from "./log";
@@ -31,7 +34,20 @@ if (config.channel === "bluebubbles") {
   channel = createLocalChannel();
 }
 
+// The guardian reaches the user out of band, so remember where to send (chatGuid)
+// and how (the channel) per phone.
+const guardian = createGuardian({
+  store,
+  deps,
+  send: async (phone, text) => {
+    const guid = await store.getChatGuid(phone);
+    if (guid) await channel.sendText(guid, text);
+    else log("guardian.no_chat", { phone });
+  },
+});
+
 channel.onMessage(async (msg) => {
+  await store.setChatGuid(msg.phone, msg.chatGuid);
   if (!msg.text) {
     await channel.sendText(msg.chatGuid, "can't hear voice notes yet — text me for now.");
     return;
@@ -45,6 +61,13 @@ app.use(express.json({ limit: "10mb" }));
 app.get("/health", (_req, res) => {
   res.json({ ok: true, channel: channel.name, model: llm.model });
 });
+
+// The page the buddy links one-tap; it streams the user's watch HR back here.
+app.get("/watch", (_req, res) => {
+  res.type("html").send(watchPageHtml());
+});
+app.post("/vitals", createVitalsHandler(store, guardian));
+
 if (bluebubbles) {
   app.post("/imessage/incoming", bluebubbles.webhook());
 }

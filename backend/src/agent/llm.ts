@@ -55,7 +55,7 @@ export function createLlm(config: Config): Llm {
 // absent, so the full loop (channel -> agent -> tools -> store) is provable
 // without a key. It reads the ONBOARDING_STATUS line from the system prompt
 // (the same signal the real model uses) to decide what to collect next.
-// The moment a key is set, AnthropicLlm + claude-sonnet-4-6 takes over.
+// The moment a key is set, AnthropicLlm + claude-haiku-4-5 takes over.
 // ---------------------------------------------------------------------------
 const PHONE_RE = /(\+?\d[\d\-\s().]{6,}\d)/;
 

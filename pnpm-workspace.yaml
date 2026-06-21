@@ -2,3 +2,6 @@ packages:
   - shared
   - channel
   - backend
+allowBuilds:
+  esbuild: set this to true or false
+minimumReleaseAge: 0
