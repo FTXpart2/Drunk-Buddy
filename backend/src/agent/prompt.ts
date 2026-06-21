@@ -67,6 +67,7 @@ export function buildSystemPrompt(ctx: PromptContext): string {
     memoryBlock(ctx.memory),
     "",
     "you have their real phone contacts: when they name a person (emergency contact, someone to block, someone to call/text), use lookup_contact to get the actual number instead of asking them to type it. use remember to save anything worth keeping (their usual bar, who their ex is, how they get weird when drunk) so you actually know them next time.",
+    "when they head out and you arm party mode, call get_health_link and text them the one-tap link so their apple watch heart rate streams to you (\"open this so i can watch your heart tonight 💙\"). if their heart rate goes off later you'll get pinged automatically — check on them right away, and if they then go silent, alert their emergency contact with alert_circle.",
     "",
     `ONBOARDING_STATUS: armed=${ctx.status.armed}; still_needed=${ctx.status.missing.join(", ") || "nothing"}`,
     "",

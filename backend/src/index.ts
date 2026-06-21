@@ -5,6 +5,9 @@ import { createLlm } from "./agent/llm";
 import { stubActions } from "./tools/actions";
 import { createContacts } from "./contacts/contacts";
 import { handleInbound, type Deps } from "./agent/loop";
+import { createGuardian } from "./vitals/guardian";
+import { createVitalsHandler } from "./vitals/ingest";
+import { watchPageHtml } from "./vitals/watch-page";
 import {
   createLocalChannel,
   createBlueBubblesChannel,
@@ -68,7 +71,20 @@ const notifyContact = async (number: string, text: string): Promise<void> => {
 };
 const deps: Deps = { store, llm, actions: stubActions, contacts, notifyContact, maxSteps: 6 };
 
+// The guardian reaches the user out of band (heart-rate check-in / escalation),
+// so it needs where to text them (persisted chatGuid) and how (the channel).
+const guardian = createGuardian({
+  store,
+  deps,
+  send: async (phone, text) => {
+    const guid = await store.getChatGuid(phone);
+    if (guid) await channel.sendText(guid, text);
+    else log("guardian.no_chat", { phone });
+  },
+});
+
 channel.onMessage(async (msg) => {
+  await store.setChatGuid(msg.phone, msg.chatGuid);
   if (!msg.text) {
     await channel.sendText(msg.chatGuid, "can't hear voice notes yet — text me for now.");
     return;
@@ -83,6 +99,11 @@ app.use(express.urlencoded({ extended: false })); // Twilio posts form-encoded
 app.get("/health", (_req, res) => {
   res.json({ ok: true, channel: channel.name, model: llm.model });
 });
+// One-tap page the buddy texts; it streams the user's watch HR back to /vitals.
+app.get("/watch", (_req, res) => {
+  res.type("html").send(watchPageHtml());
+});
+app.post("/vitals", createVitalsHandler(store, guardian));
 if (bluebubbles) app.post("/imessage/incoming", bluebubbles.webhook());
 if (twilioCh) app.post("/sms/incoming", twilioCh.webhook());
 

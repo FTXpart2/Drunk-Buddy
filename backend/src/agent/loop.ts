@@ -7,9 +7,6 @@ import { dispatchTool } from "./tools";
 import { onboardingStatus } from "../onboarding/onboarding";
 import { log } from "../log";
 
-// The agent loop. One inbound text in, one reply out — running tools to
-// completion in between. Conversation is persisted as a clean text transcript
-// (tool noise stays inside the turn).
 export interface Deps {
   store: Store;
   llm: Llm;
@@ -20,13 +17,8 @@ export interface Deps {
   maxSteps: number;
 }
 
-export async function handleInbound(
-  input: { phone: string; text: string },
-  deps: Deps,
-): Promise<string> {
-  const { phone, text } = input;
-  const { store, llm, actions, contacts, notifyContact } = deps;
-
+// Build the buddy's current system prompt + recent conversation for a phone.
+async function buildContext(phone: string, store: Store) {
   const [profile, friends, blocklist, party, convo, memory] = await Promise.all([
     store.getProfile(phone),
     store.getFriends(phone),
@@ -35,16 +27,14 @@ export async function handleInbound(
     store.getConversation(phone),
     store.recallMemory(phone),
   ]);
-  await store.setLastSeen(phone, Date.now());
-
   const status = onboardingStatus(profile, friends);
   const system = buildSystemPrompt({ profile, friends, blocklist, party, status, memory });
+  return { system, convo };
+}
 
-  const messages: any[] = [
-    ...convo.map((m) => ({ role: m.role, content: m.content })),
-    { role: "user", content: text },
-  ];
-
+// Run the Claude tool loop to completion; returns the buddy's final text.
+async function runToolLoop(system: string, messages: any[], deps: Deps, phone: string): Promise<string> {
+  const { store, llm, actions, contacts, notifyContact } = deps;
   let finalText = "";
   for (let step = 0; step < deps.maxSteps; step++) {
     const resp = await llm.createMessage({ system, messages });
@@ -72,11 +62,41 @@ export async function handleInbound(
     finalText = textOf(resp.content);
     break;
   }
+  return finalText;
+}
 
-  await store.appendConversation(phone, { role: "user", content: text });
-  if (finalText) await store.appendConversation(phone, { role: "assistant", content: finalText });
+// A real inbound message from the user.
+export async function handleInbound(input: { phone: string; text: string }, deps: Deps): Promise<string> {
+  const { phone, text } = input;
+  await deps.store.setLastSeen(phone, Date.now());
 
+  const { system, convo } = await buildContext(phone, deps.store);
+  const messages: any[] = [
+    ...convo.map((m) => ({ role: m.role, content: m.content })),
+    { role: "user", content: text },
+  ];
+
+  const finalText = await runToolLoop(system, messages, deps, phone);
+
+  await deps.store.appendConversation(phone, { role: "user", content: text });
+  if (finalText) await deps.store.appendConversation(phone, { role: "assistant", content: finalText });
   return finalText || "(…)";
+}
+
+// The guardian reaching out UNPROMPTED (heart-rate check-in / escalation). The
+// `note` is an internal instruction, not a user turn: we do NOT touch lastSeen,
+// and only the buddy's outbound text is logged to the transcript.
+export async function runGuardianCheck(input: { phone: string; note: string }, deps: Deps): Promise<string> {
+  const { phone, note } = input;
+  const { system, convo } = await buildContext(phone, deps.store);
+  const messages: any[] = [
+    ...convo.map((m) => ({ role: m.role, content: m.content })),
+    { role: "user", content: note },
+  ];
+
+  const finalText = await runToolLoop(system, messages, deps, phone);
+  if (finalText) await deps.store.appendConversation(phone, { role: "assistant", content: finalText });
+  return finalText;
 }
 
 function textOf(content: any[]): string {

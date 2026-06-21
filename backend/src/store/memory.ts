@@ -17,6 +17,7 @@ export class MemoryStore implements Store {
   private vitals = new Map<string, VitalsTick[]>();
   private memories = new Map<string, MemoryItem[]>();
   private lastSeen = new Map<string, number>();
+  private chatGuids = new Map<string, string>();
   private convos = new Map<string, ChatMessage[]>();
 
   async getProfile(phone: string) {
@@ -78,6 +79,13 @@ export class MemoryStore implements Store {
   }
   async setLastSeen(phone: string, ts: number) {
     this.lastSeen.set(phone, ts);
+  }
+
+  async getChatGuid(phone: string) {
+    return this.chatGuids.get(phone) ?? null;
+  }
+  async setChatGuid(phone: string, chatGuid: string) {
+    this.chatGuids.set(phone, chatGuid);
   }
 
   async getConversation(phone: string) {

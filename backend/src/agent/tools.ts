@@ -2,6 +2,9 @@ import type { UserProfile } from "@drunk-buddy/shared";
 import type { Store } from "../store/store";
 import type { Actions } from "../tools/actions";
 import type { Contacts } from "../contacts/contacts";
+import { config } from "../config";
+import { makeHealthToken } from "../vitals/link";
+import { classifyHr } from "../vitals/hr";
 
 // Claude tool schema (brief §4). Each external tool is dispatched to the
 // Actions interface (stub now, real later). update_profile / set_party_mode /
@@ -90,6 +93,12 @@ export const TOOLS = [
   {
     name: "get_vitals",
     description: "Read the user's latest vitals (heart rate, motion).",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "get_health_link",
+    description:
+      "Get the one-tap link to text the user so their Apple Watch heart rate streams to you. Share it in your voice right after they head out / you turn on party mode, so you can keep an eye on them.",
     input_schema: { type: "object", properties: {} },
   },
   {
@@ -190,8 +199,18 @@ export async function dispatchTool(
       return JSON.stringify(result);
     }
 
-    case "get_vitals":
-      return actions.getVitals({ phone });
+    case "get_vitals": {
+      const ticks = await store.getVitals(phone);
+      const latest = ticks[ticks.length - 1];
+      if (!latest) return actions.getVitals({ phone });
+      const level = classifyHr(latest.hr);
+      const tag = level === "high" ? " — running hot" : level === "low" ? " — running low" : " — looks normal";
+      const age = Math.round((Date.now() - latest.ts) / 1000);
+      return `hr ${latest.hr}${tag} (${age}s ago)`;
+    }
+
+    case "get_health_link":
+      return `text them this one-tap link so their watch streams to you: ${config.publicUrl ?? "http://localhost:8787"}/watch?t=${makeHealthToken(phone)}`;
 
     case "remember":
       await store.addMemory(phone, String(input.fact ?? ""));
