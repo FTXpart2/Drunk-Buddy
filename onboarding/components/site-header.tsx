@@ -32,14 +32,8 @@ export function SiteHeader() {
         </nav>
 
         <div className="flex items-center gap-2">
-          <Link
-            href="#"
-            className="hidden text-sm text-muted-foreground transition-colors hover:text-foreground sm:block"
-          >
-            Log in
-          </Link>
           <Button render={<Link href="#get" />} nativeButton={false} className="rounded-full px-5">
-            Add to iMessage
+            Message Drunk Buddy
           </Button>
         </div>
       </div>

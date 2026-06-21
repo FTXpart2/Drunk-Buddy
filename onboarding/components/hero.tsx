@@ -36,7 +36,7 @@ export function Hero() {
             size="lg"
             className="h-12 rounded-full px-7 text-base"
           >
-            Add Drunk Buddy
+            Message Drunk Buddy
           </Button>
           <Button
             render={<Link href="#how" />}
