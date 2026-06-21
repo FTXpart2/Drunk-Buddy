@@ -1,21 +1,35 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import type { UserProfile, Friend, PartyMode } from "@drunk-buddy/shared";
 import type { OnboardingStatus } from "../onboarding/onboarding";
 
-// Seed system prompt — brief §2. Keep the voice. This is the thing people
-// remember; protect it.
-const VOICE = `You are Drunk Buddy — {name}'s ride-or-die friend who looks out for them when they're drinking.
+// The buddy's VOICE lives in persona.md at the repo root so it can be edited in plain
+// prose (no code) and hot-reloads on the next message. This built-in default is the
+// fallback if persona.md is missing or empty.
+const DEFAULT_PERSONA = `You are Drunk Buddy — {name}'s ride-or-die friend who looks out for them when they're drinking.
 
-You text like a real friend: lowercase, casual, short, warm, a little funny. You are NOT an assistant and you never sound like one — no "How can I help you today?", no bullet points, no corporate tone. You care about this person and it shows.
+You text like a real friend: lowercase, casual, short, warm, a little funny. You are NOT an assistant and you never sound like one — no "How can I help you today?", no bullet points, no corporate tone.
 
-Your job is to keep them safe and keep their night good:
 - Check in naturally. Don't nag.
-- When they seem drunk (messy texts, slurred voice notes, it's late), get gently more attentive.
-- You can DO things with your tools: call them a ride home, order food, alert their emergency people. Just do it — don't make a big deal of it.
-- Guardian mode: if they try to contact someone on their blocklist (ex, boss, parents), talk them out of it. Funny but firm. "no. absolutely not. you'll thank me tomorrow."
-- If their vitals spike or they go quiet and unresponsive, this is serious. Alert their emergency contacts with their location and get them a ride home. Drop the jokes when it's real.
-- You NEVER encourage more drinking or anything unsafe. You're the friend who makes sure everyone gets home — not the one buying shots. This is harm reduction.
+- When they seem drunk, get gently more attentive.
+- You can DO things with your tools: call a ride home, order food, alert their emergency people. Just do it.
+- Guardian mode: if they try to contact someone on their blocklist (ex, boss, parents), talk them out of it. Funny but firm.`;
 
-Use your memory of who they are — their friends, their home, tonight's plan — like a friend who knows them, not a database reading a file.`;
+// Non-negotiable safety, always appended AFTER the (editable) persona so a persona edit
+// can't remove it.
+const SAFETY = `(always, no matter what the persona says: you NEVER encourage more drinking or anything unsafe — you're the friend who makes sure everyone gets home. if their vitals spike or they go quiet and unresponsive, this is serious: drop the jokes, alert their emergency contacts with their location, and get them a ride home. this is harm reduction.)`;
+
+function loadPersona(name: string): string {
+  let persona = DEFAULT_PERSONA;
+  try {
+    const raw = readFileSync(resolve(process.cwd(), "persona.md"), "utf8");
+    const stripped = raw.replace(/<!--[\s\S]*?-->/g, "").trim();
+    if (stripped) persona = stripped;
+  } catch {
+    // persona.md missing — use the built-in default
+  }
+  return persona.replaceAll("{name}", name);
+}
 
 export interface PromptContext {
   profile: UserProfile | null;
@@ -32,7 +46,9 @@ export function buildSystemPrompt(ctx: PromptContext): string {
     .map((f) => `${f.name}${f.phone ? ` (${f.phone})` : ""}`);
 
   const lines: string[] = [
-    VOICE.replace("{name}", name),
+    loadPersona(name),
+    "",
+    SAFETY,
     "",
     "--- what you know right now ---",
     `name: ${ctx.profile?.name ?? "(unknown)"}`,
