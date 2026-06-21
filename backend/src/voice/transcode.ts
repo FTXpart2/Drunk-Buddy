@@ -1,5 +1,28 @@
 import { spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { log } from "../log";
+
+// Convert an mp3 (Aura TTS output) -> CAF/Opus so BlueBubbles can send a NATIVE
+// iMessage voice bubble (it needs a CAF container + Opus codec; a renamed mp3
+// makes a broken 0-second bubble). Uses macOS `afconvert` — ffmpeg on this
+// platform can't mux Opus into CAF ("not yet implemented"). Returns the .caf
+// path, or null on any failure (non-macOS / no afconvert) so the caller falls
+// back to a text reply.
+export async function toCafOpus(mp3Path: string): Promise<string | null> {
+  const out = join(tmpdir(), `db-${randomUUID()}.caf`);
+  try {
+    return await new Promise<string>((resolve, reject) => {
+      const af = spawn("afconvert", ["-d", "opus", "-f", "caff", mp3Path, out]);
+      af.on("error", reject); // afconvert not found (non-macOS)
+      af.on("close", (code) => (code === 0 ? resolve(out) : reject(new Error(`afconvert exit ${code}`))));
+    });
+  } catch (err) {
+    log("caf.skip", { reason: String(err) });
+    return null;
+  }
+}
 
 // iMessage voice notes are usually .caf, which Deepgram may not decode. If ffmpeg
 // is on PATH and the format looks like caf/unknown, transcode bytes -> wav before

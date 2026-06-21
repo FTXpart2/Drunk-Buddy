@@ -131,12 +131,18 @@ export function createBlueBubblesChannel(config: BlueBubblesConfig): BlueBubbles
     async sendAudio(chatGuid, filePath) {
       const fs = await import("node:fs");
       const path = await import("node:path");
+      // A CAF/Opus file sent over the Private API with isAudioMessage renders as a
+      // NATIVE iMessage voice bubble. That ONE send needs private-api (text can
+      // stay on apple-script). Anything else goes as a normal file attachment.
+      const isCaf = filePath.toLowerCase().endsWith(".caf");
+      const sendMethod = isCaf ? "private-api" : method;
       const form = new FormData();
       const buf = fs.readFileSync(filePath);
       form.append("chatGuid", chatGuid);
       form.append("tempGuid", tempGuid());
       form.append("name", path.basename(filePath));
-      form.append("method", method);
+      form.append("method", sendMethod);
+      if (isCaf) form.append("isAudioMessage", "1");
       form.append("attachment", new Blob([buf]), path.basename(filePath));
       const res = await fetch(`${base}/api/v1/message/attachment?password=${pw}`, {
         method: "POST",

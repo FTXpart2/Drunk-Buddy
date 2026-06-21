@@ -12,6 +12,7 @@ import { createLocationHandler, resolveAndStoreLocation } from "./location/locat
 import { createStt } from "./voice/stt";
 import { createTts } from "./voice/tts";
 import { transcribeVoiceNote } from "./voice/bridge";
+import { toCafOpus } from "./voice/transcode";
 import { unlink } from "node:fs/promises";
 import {
   createLocalChannel,
@@ -122,15 +123,24 @@ channel.onMessage(async (msg) => {
   const reply = await handleInbound({ phone: msg.phone, text }, deps);
   if (!reply) return;
 
-  // Reply as TEXT by default — a tap-to-play .mp3 attachment in iMessage is clunky,
-  // and native waveform voice bubbles need .caf via the Private API (unreliable on
-  // macOS 26). Opt into a spoken Aura reply with VOICE_REPLY=audio.
+  // Reply as TEXT by default. Opt into a spoken reply as a NATIVE iMessage voice
+  // bubble with VOICE_REPLY=audio: Aura mp3 -> afconvert CAF/Opus -> Private API.
+  // If anything's missing (no Private API, conversion fails) it falls back to
+  // text — never an mp3 file, never a dead end.
   if (viaVoice && process.env.VOICE_REPLY === "audio") {
     const mp3 = await tts.synthesize(reply);
-    if (mp3) {
-      await channel.sendAudio(msg.chatGuid, mp3);
-      await unlink(mp3).catch(() => {});
-      return;
+    const caf = mp3 ? await toCafOpus(mp3) : null;
+    if (mp3) await unlink(mp3).catch(() => {});
+    if (caf) {
+      try {
+        await channel.sendAudio(msg.chatGuid, caf); // native voice bubble (private-api)
+        await unlink(caf).catch(() => {});
+        return;
+      } catch (err) {
+        log("voice.bubble_failed", { err: String(err) });
+        await unlink(caf).catch(() => {});
+        // fall through to a text reply
+      }
     }
   }
   await channel.sendText(msg.chatGuid, reply);
