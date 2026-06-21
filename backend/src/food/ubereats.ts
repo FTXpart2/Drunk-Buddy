@@ -26,6 +26,8 @@ export interface FoodQuote {
   total?: string;
   /** Tap-to-order link — opens the chosen restaurant (or search) in Uber Eats. */
   link?: string;
+  /** True when nothing near them is open/delivering — never offer a closed spot. */
+  closed?: boolean;
   note?: string;
 }
 
@@ -65,57 +67,67 @@ export async function orderEats(query: string): Promise<FoodQuote> {
     page.setDefaultNavigationTimeout(60_000);
 
     await page.goto("https://www.ubereats.com/", { waitUntil: "domcontentloaded" });
-    await sleep(5000);
+    await sleep(3000);
 
     if (await eatsLoginWall(page)) {
       log("food.unauthenticated", {});
       return { ok: true, ordered: false, item: query, link, note: "eats not logged in — run pnpm eats:login" };
     }
 
-    // ---- search (results render async, so WAIT for the store cards) ----
-    await page.locator('input[placeholder*="Search" i]').first().click({ timeout: 15_000 });
-    await sleep(800);
-    await page.keyboard.type(query, { delay: 45 });
-    await sleep(1200);
-    await page.keyboard.press("Enter");
+    // ---- search by navigating straight to the results URL (the `pl` param carries
+    // the saved delivery address) — deterministic, skips the suggestions overlay ----
+    const pl = page.url().match(/[?&]pl=([^&]+)/)?.[1];
+    const searchUrl = `https://www.ubereats.com/search?${pl ? `pl=${pl}&` : ""}q=${encodeURIComponent(query)}`;
+    await page.goto(searchUrl, { waitUntil: "domcontentloaded" }).catch(() => {});
     await page.locator('a[href*="/store/"]').first().waitFor({ state: "visible", timeout: 20_000 }).catch(() => {});
-    await page.keyboard.press("Escape").catch(() => {}); // dismiss the suggestions overlay
-    await sleep(2500);
+    await sleep(3000); // let the full results grid finish rendering
 
-    // ---- pick the first OPEN restaurant (open cards show an ETA; closed say "Closed") ----
-    const pick = await page.evaluate(() => {
+    // ---- collect the top result cards. Search results DON'T expose open/ETA in
+    // their text, so the real open-check is each store's own page (below). ----
+    const cards: { href: string; text: string }[] = await page.evaluate(() => {
       const doc = (globalThis as any).document;
-      const cards = Array.from(doc.querySelectorAll('a[href*="/store/"]')) as any[];
-      const open = cards.find(
-        (a) => /\d+\s*min/i.test(a.textContent || "") && !/closed/i.test(a.textContent || ""),
-      );
-      const chosen = open ?? cards[0];
-      return chosen
-        ? { href: chosen.getAttribute("href"), text: (chosen.textContent || "").trim().slice(0, 120) }
-        : null;
+      const seen = new Set<string>();
+      const out: { href: string; text: string }[] = [];
+      for (const a of Array.from(doc.querySelectorAll('a[href*="/store/"]')) as any[]) {
+        const href = a.getAttribute("href");
+        if (!href || seen.has(href)) continue;
+        seen.add(href);
+        out.push({ href, text: (a.textContent || "").trim().replace(/\s+/g, " ").slice(0, 70) });
+      }
+      return out.slice(0, 5);
     });
-    if (!pick?.href) {
-      return { ok: true, ordered: false, item: query, link, note: "no open results — deep link" };
+    log("food.cards", { query, texts: cards.map((c) => c.text) });
+
+    // ---- walk the top results; take the FIRST one that's genuinely OPEN. Each
+    // store page is the source of truth for open/closed + the delivery ETA. ----
+    let found: { place: string; eta?: string; link: string } | null = null;
+    for (const card of cards.slice(0, 3)) {
+      const storeLink = card.href.startsWith("http") ? card.href : `https://www.ubereats.com${card.href}`;
+      await page.goto(storeLink, { waitUntil: "domcontentloaded" }).catch(() => {});
+      await page.locator("h1").first().waitFor({ state: "visible", timeout: 12_000 }).catch(() => {});
+      await sleep(1000);
+      const info = await page.evaluate(() => {
+        const doc = (globalThis as any).document;
+        const name = (doc.querySelector("h1")?.textContent || "").trim();
+        const head: string = (doc.body.innerText || "").slice(0, 700); // store header region
+        const closed =
+          /\bclosed\b|currently unavailable|not (currently )?(available|delivering)|opens (at|on|in|tomorrow)/i.test(head);
+        const eta = head.match(/(\d+\s*(?:–|-|to)\s*\d+|\d+)\s*min/i)?.[0];
+        return { name, eta, closed };
+      });
+      if (info.name && !info.closed) {
+        found = { place: info.name, eta: info.eta?.replace(/\s+/g, " "), link: storeLink };
+        break;
+      }
+      log("food.skip_closed", { query, place: info.name });
     }
-    const storeLink = pick.href.startsWith("http") ? pick.href : `https://www.ubereats.com${pick.href}`;
 
-    // ---- open the store for a clean name + delivery ETA ----
-    await page.goto(storeLink, { waitUntil: "domcontentloaded" }).catch(() => {});
-    await page.locator("h1").first().waitFor({ state: "visible", timeout: 15_000 }).catch(() => {});
-    await sleep(2000);
-    await page.screenshot({ path: "/tmp/eats-store.png" }).catch(() => {});
-    const info = await page.evaluate(() => {
-      const doc = (globalThis as any).document;
-      const name = (doc.querySelector("h1")?.textContent || "").trim();
-      const body: string = doc.body.innerText || "";
-      const eta = body.match(/(\d+\s*(?:–|-|to)\s*\d+|\d+)\s*min/i)?.[0];
-      return { name, eta };
-    });
-    const place = info.name || cleanCardName(pick.text);
-    const eta = (info.eta || pick.text.match(/(\d+\s*(?:–|-)?\s*\d*)\s*min/i)?.[0])?.replace(/\s+/g, " ");
-
-    log("food.quote", { query, place, eta });
-    return { ok: true, ordered: false, item: query, place, eta, link: storeLink };
+    if (!found) {
+      log("food.closed", { query });
+      return { ok: true, ordered: false, item: query, closed: true, link, note: "nothing open" };
+    }
+    log("food.quote", { query, place: found.place, eta: found.eta });
+    return { ok: true, ordered: false, item: query, place: found.place, eta: found.eta, link: found.link };
   } catch (err) {
     log("food.error", { err: String(err) });
     return { ok: true, ordered: false, item: query, link, note: "hiccup — deep link" };
@@ -129,19 +141,15 @@ export async function orderEats(query: string): Promise<FoodQuote> {
   }
 }
 
-// "McDonald'sSponsored • 25 min • $0 delivery • 4.5" -> "McDonald's"
-function cleanCardName(text: string): string {
-  return text.split(/Sponsored|Closed|Open|•|\d+\s*min|\$/)[0].trim() || "a spot nearby";
-}
-
 async function eatsLoginWall(page: Page): Promise<boolean> {
-  if (/\/login|auth\.uber\.com/i.test(page.url())) return true;
-  // Logged in => the search box renders; a login wall won't have it.
-  const searchVisible = await page
-    .locator('input[placeholder*="Search" i]')
+  if (/auth\.uber\.com|\/login\b/i.test(page.url())) return true;
+  // Wait (generously) for a POSITIVE logged-in signal — the search box or the
+  // saved delivery-address label. Don't infer "not logged in" from a slow render.
+  const loggedIn = await page
+    .locator('input[placeholder*="Search" i], [data-testid="delivery-address-label"]')
     .first()
-    .waitFor({ state: "visible", timeout: 8_000 })
+    .waitFor({ state: "visible", timeout: 15_000 })
     .then(() => true)
     .catch(() => false);
-  return !searchVisible;
+  return !loggedIn;
 }

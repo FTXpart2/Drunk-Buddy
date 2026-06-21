@@ -116,6 +116,10 @@ export const browserbaseActions: Actions = {
         log("food.fallback", { note: quote.note });
         return stubActions.orderFood(input);
       }
+      // Nothing open near them — say so honestly, never fake-offer a closed spot.
+      if (quote.closed) {
+        return `looks like everything near them is closed right now — nothing's delivering. tell them gently and offer to try a different craving or check back in a bit.`;
+      }
       const eta = quote.eta ? `, ~${quote.eta}` : "";
       if (quote.place) {
         return `found you ${quote.place}${eta} — tap to order + pay: ${quote.link}`;
