@@ -25,6 +25,12 @@ function tempGuid(): string {
   return `db-${Date.now()}-${Math.round(Math.random() * 1e9)}`;
 }
 
+// Native voice bubble only works for a CAF file over the Private API; otherwise
+// the file is sent as a normal attachment.
+export function isAudioMessage(filePath: string, method: string): boolean {
+  return method === "private-api" && filePath.toLowerCase().endsWith(".caf");
+}
+
 export function createBlueBubblesChannel(config: BlueBubblesConfig): BlueBubblesChannel {
   let handler: InboundHandler | null = null;
   const method = config.method ?? "apple-script";
@@ -95,6 +101,9 @@ export function createBlueBubblesChannel(config: BlueBubblesConfig): BlueBubbles
       form.append("name", path.basename(filePath));
       form.append("method", method);
       form.append("attachment", new Blob([buf]), path.basename(filePath));
+      // A CAF/Opus file over the Private API renders as a native iMessage voice
+      // bubble; anything else is sent as a normal file attachment.
+      if (isAudioMessage(filePath, method)) form.append("isAudioMessage", "1");
       const res = await fetch(`${base}/api/v1/message/attachment?password=${pw}`, {
         method: "POST",
         body: form,

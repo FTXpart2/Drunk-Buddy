@@ -3,6 +3,8 @@ import type { InboundMessage } from "@drunk-buddy/shared";
 import { isAudio, transcribeVoiceNote } from "../src/voice/bridge";
 import { stubStt } from "../src/voice/stt";
 import { stubTts } from "../src/voice/tts";
+import { toCafOpus } from "../src/voice/transcode";
+import { isAudioMessage } from "@drunk-buddy/channel";
 
 const voiceMsg = (over: Partial<InboundMessage> = {}): InboundMessage => ({
   phone: "+1",
@@ -51,5 +53,18 @@ describe("stubs (no API key)", () => {
   it("stub STT returns empty and stub TTS returns null", async () => {
     expect(await stubStt.transcribe(Buffer.from(""))).toBe("");
     expect(await stubTts.synthesize("hi")).toBeNull();
+  });
+});
+
+describe("native voice bubble", () => {
+  it("only flags isAudioMessage for a .caf over the private-api", () => {
+    expect(isAudioMessage("/tmp/x.caf", "private-api")).toBe(true);
+    expect(isAudioMessage("/tmp/x.caf", "apple-script")).toBe(false);
+    expect(isAudioMessage("/tmp/x.mp3", "private-api")).toBe(false);
+  });
+
+  it("toCafOpus returns null when the input can't be converted", async () => {
+    // /nonexistent.mp3 -> ffmpeg errors (or ffmpeg missing) -> graceful null
+    expect(await toCafOpus("/nonexistent-db-test.mp3")).toBeNull();
   });
 });

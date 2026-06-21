@@ -10,6 +10,7 @@ import { watchPageHtml } from "./vitals/watch-page";
 import { createStt } from "./voice/stt";
 import { createTts } from "./voice/tts";
 import { transcribeVoiceNote } from "./voice/bridge";
+import { toCafOpus } from "./voice/transcode";
 import { createLocalChannel, createBlueBubblesChannel, type BlueBubblesChannel } from "@drunk-buddy/channel";
 import type { Channel } from "@drunk-buddy/shared";
 import { unlink } from "node:fs/promises";
@@ -75,8 +76,11 @@ channel.onMessage(async (msg) => {
   if (viaVoice) {
     const mp3 = await tts.synthesize(reply);
     if (mp3) {
-      await channel.sendAudio(msg.chatGuid, mp3);
+      // Prefer a native iMessage voice bubble (CAF/Opus); fall back to the mp3 file.
+      const caf = await toCafOpus(mp3);
+      await channel.sendAudio(msg.chatGuid, caf ?? mp3);
       await unlink(mp3).catch(() => {});
+      if (caf) await unlink(caf).catch(() => {});
       return;
     }
   }
