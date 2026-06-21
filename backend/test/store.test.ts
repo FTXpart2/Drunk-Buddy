@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { MemoryStore } from "../src/store/memory";
+import { CONVO_CAP } from "../src/store/store";
 
 describe("MemoryStore", () => {
   it("saves and reads a profile", async () => {
@@ -17,11 +18,12 @@ describe("MemoryStore", () => {
     expect(await s.getBlocklist("+1")).toEqual(["jordan"]);
   });
 
-  it("caps the conversation buffer at 20", async () => {
+  it("caps the conversation buffer at CONVO_CAP", async () => {
     const s = new MemoryStore();
-    for (let i = 0; i < 25; i++) await s.appendConversation("+1", { role: "user", content: String(i) });
+    const n = CONVO_CAP + 5;
+    for (let i = 0; i < n; i++) await s.appendConversation("+1", { role: "user", content: String(i) });
     const c = await s.getConversation("+1");
-    expect(c).toHaveLength(20);
-    expect(c[0].content).toBe("5");
+    expect(c).toHaveLength(CONVO_CAP);
+    expect(c[0].content).toBe(String(n - CONVO_CAP));
   });
 });

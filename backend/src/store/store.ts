@@ -36,4 +36,4 @@ export interface Store {
 }
 
 export const VITALS_CAP = 50;
-export const CONVO_CAP = 20;
+export const CONVO_CAP = 40;

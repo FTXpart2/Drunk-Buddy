@@ -1,5 +1,6 @@
 import type { Store } from "../store/store";
 import type { Actions } from "../tools/actions";
+import type { Contacts } from "../contacts/contacts";
 import type { Llm } from "./llm";
 import { buildSystemPrompt } from "./prompt";
 import { dispatchTool } from "./tools";
@@ -13,6 +14,7 @@ export interface Deps {
   store: Store;
   llm: Llm;
   actions: Actions;
+  contacts: Contacts;
   maxSteps: number;
 }
 
@@ -21,19 +23,20 @@ export async function handleInbound(
   deps: Deps,
 ): Promise<string> {
   const { phone, text } = input;
-  const { store, llm, actions } = deps;
+  const { store, llm, actions, contacts } = deps;
 
-  const [profile, friends, blocklist, party, convo] = await Promise.all([
+  const [profile, friends, blocklist, party, convo, memory] = await Promise.all([
     store.getProfile(phone),
     store.getFriends(phone),
     store.getBlocklist(phone),
     store.getParty(phone),
     store.getConversation(phone),
+    store.recallMemory(phone),
   ]);
   await store.setLastSeen(phone, Date.now());
 
   const status = onboardingStatus(profile, friends);
-  const system = buildSystemPrompt({ profile, friends, blocklist, party, status });
+  const system = buildSystemPrompt({ profile, friends, blocklist, party, status, memory });
 
   const messages: any[] = [
     ...convo.map((m) => ({ role: m.role, content: m.content })),
@@ -50,7 +53,7 @@ export async function handleInbound(
       for (const block of resp.content) {
         if (block.type === "tool_use") {
           log("tool.use", { name: block.name, input: block.input });
-          const result = await dispatchTool(block.name, block.input, { phone, store, actions });
+          const result = await dispatchTool(block.name, block.input, { phone, store, actions, contacts });
           results.push({ type: "tool_result", tool_use_id: block.id, content: result });
         }
       }

@@ -3,6 +3,7 @@ import { config } from "./config";
 import { createStore } from "./store";
 import { createLlm } from "./agent/llm";
 import { stubActions } from "./tools/actions";
+import { createContacts } from "./contacts/contacts";
 import { handleInbound, type Deps } from "./agent/loop";
 import {
   createLocalChannel,
@@ -20,7 +21,8 @@ import { log } from "./log";
 // The agent is identical regardless of channel — that's the point of the interface.
 const store = createStore();
 const llm = createLlm(config);
-const deps: Deps = { store, llm, actions: stubActions, maxSteps: 6 };
+const contacts = createContacts(config);
+const deps: Deps = { store, llm, actions: stubActions, contacts, maxSteps: 6 };
 
 let channel: Channel;
 let bluebubbles: BlueBubblesChannel | null = null;

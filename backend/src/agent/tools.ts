@@ -1,6 +1,7 @@
 import type { UserProfile } from "@drunk-buddy/shared";
 import type { Store } from "../store/store";
 import type { Actions } from "../tools/actions";
+import type { Contacts } from "../contacts/contacts";
 
 // Claude tool schema (brief §4). Each external tool is dispatched to the
 // Actions interface (stub now, real later). update_profile / set_party_mode /
@@ -108,12 +109,23 @@ export const TOOLS = [
       properties: { query: { type: "string" } },
     },
   },
+  {
+    name: "lookup_contact",
+    description:
+      "Look someone up in the user's REAL phone contacts by name to get their actual number. Use it whenever they mention a person (an emergency contact, someone to block, someone to call/text) and you need the real number — don't make them type it out.",
+    input_schema: {
+      type: "object",
+      properties: { name: { type: "string", description: "the person's name to search for" } },
+      required: ["name"],
+    },
+  },
 ];
 
 export interface ToolContext {
   phone: string;
   store: Store;
   actions: Actions;
+  contacts: Contacts;
 }
 
 export async function dispatchTool(
@@ -121,7 +133,7 @@ export async function dispatchTool(
   input: any,
   ctx: ToolContext,
 ): Promise<string> {
-  const { phone, store, actions } = ctx;
+  const { phone, store, actions, contacts } = ctx;
   switch (name) {
     case "update_profile":
       return updateProfile(phone, input, store);
@@ -173,6 +185,12 @@ export async function dispatchTool(
     case "recall": {
       const items = await store.recallMemory(phone, input.query);
       return items.length ? items.map((i) => i.fact).join("; ") : "nothing on that yet.";
+    }
+
+    case "lookup_contact": {
+      const matches = await contacts.lookup(String(input.name ?? ""));
+      if (!matches.length) return `no contact found matching "${input.name ?? ""}".`;
+      return matches.map((m) => `${m.name}: ${m.phone}`).join("; ");
     }
 
     default:

@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import type { UserProfile, Friend, PartyMode } from "@drunk-buddy/shared";
+import type { UserProfile, Friend, PartyMode, MemoryItem } from "@drunk-buddy/shared";
 import type { OnboardingStatus } from "../onboarding/onboarding";
 
 // The buddy's VOICE lives in persona.md at the repo root so it can be edited in plain
@@ -37,6 +37,14 @@ export interface PromptContext {
   blocklist: string[];
   party: PartyMode;
   status: OnboardingStatus;
+  memory: MemoryItem[];
+}
+
+function memoryBlock(memory: MemoryItem[]): string {
+  if (!memory.length) {
+    return "things you remember about them: (nothing yet — use the remember tool to save what matters)";
+  }
+  return "things you remember about them:\n" + memory.slice(-12).map((m) => `- ${m.fact}`).join("\n");
 }
 
 export function buildSystemPrompt(ctx: PromptContext): string {
@@ -56,6 +64,9 @@ export function buildSystemPrompt(ctx: PromptContext): string {
     `emergency contacts: ${ec.length ? ec.join(", ") : "(none yet)"}`,
     `blocklist (do NOT let them text these people): ${ctx.blocklist.length ? ctx.blocklist.join(", ") : "(none)"}`,
     `party mode: ${ctx.party.active ? "ON — you're watching over them tonight" : "off"}`,
+    memoryBlock(ctx.memory),
+    "",
+    "you have their real phone contacts: when they name a person (emergency contact, someone to block, someone to call/text), use lookup_contact to get the actual number instead of asking them to type it. use remember to save anything worth keeping (their usual bar, who their ex is, how they get weird when drunk) so you actually know them next time.",
     "",
     `ONBOARDING_STATUS: armed=${ctx.status.armed}; still_needed=${ctx.status.missing.join(", ") || "nothing"}`,
     "",
@@ -63,11 +74,11 @@ export function buildSystemPrompt(ctx: PromptContext): string {
 
   if (!ctx.status.armed) {
     lines.push(
-      "You're meeting them / still getting set up. Introduce yourself warmly, then collect what's still needed in a short, friendly back-and-forth — one thing at a time, not an interrogation. The moment you learn a fact, call update_profile to save it. Once you have their name, home address, and an emergency contact you're armed: tell them they're all set, and ask if there's anyone you should stop them from drunk-texting.",
+      "You're meeting them / still getting set up. Introduce yourself warmly, then collect what's still needed in a short, natural back-and-forth — like a friend, not a form. one thing at a time. when they name their emergency contact, look them up with lookup_contact to grab the real number (don't make them type it), then save it with update_profile. the moment you learn a fact, save it. once you have their name, home address, and an emergency contact you're armed: tell them they're set, and ask if there's anyone you should stop them from drunk-texting tonight.",
     );
   } else {
     lines.push(
-      "They're all set up and you're their buddy for the night. Just talk like a friend. Reach for your tools when it helps — add people to the blocklist, remember things, call a ride, order food, check in.",
+      "They're all set up and you're their buddy for the night. Talk like a friend who actually knows them — use the history and what you remember above, don't repeat questions you already know the answer to. Reach for your tools when it helps: look people up in their contacts, add someone to the blocklist, remember things, call a ride, order food, check in.",
     );
   }
 
