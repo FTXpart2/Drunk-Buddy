@@ -71,7 +71,24 @@ export function createBlueBubblesChannel(config: BlueBubblesConfig): BlueBubbles
       };
     },
     async sendText(chatGuid, text) {
-      await postJson("/api/v1/message/text", { chatGuid, tempGuid: tempGuid(), message: text, method });
+      // AppleScript sending on newer macOS is flaky — the same send sometimes throws
+      // a transient "Can't make any into type constant" error and sometimes succeeds.
+      // Reuse one tempGuid (so BlueBubbles dedupes) and retry until it lands.
+      const tg = tempGuid();
+      const attempts = 5;
+      let lastErr: unknown;
+      for (let i = 1; i <= attempts; i++) {
+        try {
+          await postJson("/api/v1/message/text", { chatGuid, tempGuid: tg, message: text, method });
+          if (i > 1) console.error(`[bluebubbles] send succeeded on attempt ${i}`);
+          return;
+        } catch (err) {
+          lastErr = err;
+          console.error(`[bluebubbles] send attempt ${i}/${attempts} failed, retrying…`);
+          await new Promise((r) => setTimeout(r, 1500));
+        }
+      }
+      throw lastErr;
     },
     async sendAudio(chatGuid, filePath) {
       const fs = await import("node:fs");
