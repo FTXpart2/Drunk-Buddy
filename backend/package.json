@@ -6,6 +6,7 @@
   "main": "./src/index.ts",
   "dependencies": {
     "@anthropic-ai/sdk": "latest",
+    "@deepgram/sdk": "^5.4.0",
     "@drunk-buddy/channel": "workspace:*",
     "@drunk-buddy/shared": "workspace:*",
     "dotenv": "^16.4.5",

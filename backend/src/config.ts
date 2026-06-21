@@ -20,6 +20,10 @@ export interface Config {
   tokenCompany: {
     compressionApiKey?: string;
   };
+  // Voice notes: Deepgram STT in, Deepgram Aura TTS out (one key for both).
+  // Missing key falls back to the text loop.
+  deepgramApiKey?: string;
+  ttsModel: string;
   healthLinkSecret: string;
   guardian: {
     hrLow: number;
@@ -44,6 +48,8 @@ export const config: Config = {
   tokenCompany: {
     compressionApiKey: process.env.TOKEN_COMPANY_API_KEY || undefined,
   },
+  deepgramApiKey: process.env.DEEPGRAM_API_KEY || undefined,
+  ttsModel: process.env.DEEPGRAM_TTS_MODEL || "aura-2-orion-en",
   healthLinkSecret: process.env.HEALTH_LINK_SECRET || "dev-insecure-health-secret",
   guardian: {
     hrLow: Number(process.env.HR_LOW ?? 45),

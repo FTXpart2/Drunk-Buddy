@@ -7,8 +7,12 @@ import { handleInbound, type Deps } from "./agent/loop";
 import { createGuardian } from "./vitals/guardian";
 import { createVitalsHandler } from "./vitals/ingest";
 import { watchPageHtml } from "./vitals/watch-page";
+import { createStt } from "./voice/stt";
+import { createTts } from "./voice/tts";
+import { transcribeVoiceNote } from "./voice/bridge";
 import { createLocalChannel, createBlueBubblesChannel, type BlueBubblesChannel } from "@drunk-buddy/channel";
 import type { Channel } from "@drunk-buddy/shared";
+import { unlink } from "node:fs/promises";
 import { log } from "./log";
 
 // Production-ish entrypoint: serves the BlueBubbles webhook (or runs the local
@@ -46,14 +50,37 @@ const guardian = createGuardian({
   },
 });
 
+// Voice notes: Deepgram transcribes inbound, ElevenLabs speaks the reply.
+const stt = createStt(config.deepgramApiKey);
+const tts = createTts(config.deepgramApiKey, config.ttsModel);
+
 channel.onMessage(async (msg) => {
   await store.setChatGuid(msg.phone, msg.chatGuid);
-  if (!msg.text) {
-    await channel.sendText(msg.chatGuid, "can't hear voice notes yet — text me for now.");
+
+  let text = msg.text;
+  let viaVoice = false;
+  if (!text && msg.attachment?.guid && bluebubbles) {
+    text = await transcribeVoiceNote(msg, { download: bluebubbles.downloadAttachment, stt });
+    viaVoice = true;
+  }
+  if (!text) {
+    await channel.sendText(msg.chatGuid, "couldn't make that out — say it again?");
     return;
   }
-  const reply = await handleInbound({ phone: msg.phone, text: msg.text }, deps);
-  if (reply) await channel.sendText(msg.chatGuid, reply);
+
+  const reply = await handleInbound({ phone: msg.phone, text }, deps);
+  if (!reply) return;
+
+  // Reply in kind: voice note in -> spoken reply out (fall back to text).
+  if (viaVoice) {
+    const mp3 = await tts.synthesize(reply);
+    if (mp3) {
+      await channel.sendAudio(msg.chatGuid, mp3);
+      await unlink(mp3).catch(() => {});
+      return;
+    }
+  }
+  await channel.sendText(msg.chatGuid, reply);
 });
 
 const app = express();

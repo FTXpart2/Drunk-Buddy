@@ -1,0 +1,55 @@
+import { describe, it, expect, vi } from "vitest";
+import type { InboundMessage } from "@drunk-buddy/shared";
+import { isAudio, transcribeVoiceNote } from "../src/voice/bridge";
+import { stubStt } from "../src/voice/stt";
+import { stubTts } from "../src/voice/tts";
+
+const voiceMsg = (over: Partial<InboundMessage> = {}): InboundMessage => ({
+  phone: "+1",
+  chatGuid: "g",
+  attachment: { guid: "att-1", mimeType: "audio/x-caf", name: "Audio Message.caf" },
+  ...over,
+});
+
+describe("isAudio", () => {
+  it("accepts audio + caf + unknown, rejects images", () => {
+    expect(isAudio("audio/mp4")).toBe(true);
+    expect(isAudio("audio/x-caf")).toBe(true);
+    expect(isAudio(undefined)).toBe(true);
+    expect(isAudio("image/jpeg")).toBe(false);
+  });
+});
+
+describe("transcribeVoiceNote", () => {
+  it("downloads then transcribes a voice note", async () => {
+    const download = vi.fn(async () => ({ bytes: Buffer.from("riff"), mimeType: "audio/wav" }));
+    const stt = { transcribe: vi.fn(async () => "get me home") };
+    const text = await transcribeVoiceNote(voiceMsg(), { download, stt });
+    expect(download).toHaveBeenCalledWith("att-1");
+    expect(text).toBe("get me home");
+  });
+
+  it("returns '' for a non-audio attachment (no download)", async () => {
+    const download = vi.fn(async () => ({ bytes: Buffer.from(""), mimeType: "image/png" }));
+    const text = await transcribeVoiceNote(
+      voiceMsg({ attachment: { guid: "x", mimeType: "image/png" } }),
+      { download, stt: stubStt },
+    );
+    expect(text).toBe("");
+    expect(download).not.toHaveBeenCalled();
+  });
+
+  it("returns '' when there's no attachment guid", async () => {
+    const download = vi.fn();
+    const text = await transcribeVoiceNote(voiceMsg({ attachment: undefined }), { download, stt: stubStt });
+    expect(text).toBe("");
+    expect(download).not.toHaveBeenCalled();
+  });
+});
+
+describe("stubs (no API key)", () => {
+  it("stub STT returns empty and stub TTS returns null", async () => {
+    expect(await stubStt.transcribe(Buffer.from(""))).toBe("");
+    expect(await stubTts.synthesize("hi")).toBeNull();
+  });
+});

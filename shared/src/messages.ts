@@ -3,6 +3,8 @@
 // so the whole loop is testable without the Mac gateway ("mock the edges").
 
 export interface InboundAttachment {
+  /** BlueBubbles attachment guid — used to download the bytes (e.g. a voice note). */
+  guid?: string;
   path?: string;
   url?: string;
   mimeType?: string;

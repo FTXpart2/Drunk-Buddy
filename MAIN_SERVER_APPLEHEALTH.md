@@ -197,4 +197,4 @@ Notes:
 - Leave `TOKEN_COMPANY_API_KEY` unset to disable compression entirely — the agent falls
   back to calling Anthropic directly. Nothing else changes.
 - It's a pure add-on to the LLM call; it does not touch the Apple Health / guardian flow
-  above.
+  above.ca

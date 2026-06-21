@@ -17,6 +17,8 @@ export interface BlueBubblesConfig {
 export interface BlueBubblesChannel extends Channel {
   /** Express handler to mount at POST /imessage/incoming. */
   webhook(): RequestHandler;
+  /** Download an attachment's bytes by guid (e.g. an inbound voice note). */
+  downloadAttachment(guid: string): Promise<{ bytes: Buffer; mimeType?: string }>;
 }
 
 function tempGuid(): string {
@@ -61,7 +63,9 @@ export function createBlueBubblesChannel(config: BlueBubblesConfig): BlueBubbles
             phone,
             chatGuid,
             text,
-            attachment: att ? { name: att.transferName, mimeType: att.mimeType } : undefined,
+            attachment: att
+              ? { guid: att.guid, name: att.transferName, mimeType: att.mimeType }
+              : undefined,
             raw: body,
           };
           if (phone && handler) await handler(msg);
@@ -69,6 +73,14 @@ export function createBlueBubblesChannel(config: BlueBubblesConfig): BlueBubbles
           console.error("[bluebubbles] webhook error", err);
         }
       };
+    },
+    async downloadAttachment(guid) {
+      const res = await fetch(`${base}/api/v1/attachment/${encodeURIComponent(guid)}/download?password=${pw}`);
+      if (!res.ok) {
+        throw new Error(`BlueBubbles attachment download -> ${res.status}: ${await res.text()}`);
+      }
+      const bytes = Buffer.from(await res.arrayBuffer());
+      return { bytes, mimeType: res.headers.get("content-type") ?? undefined };
     },
     async sendText(chatGuid, text) {
       await postJson("/api/v1/message/text", { chatGuid, tempGuid: tempGuid(), message: text, method });
