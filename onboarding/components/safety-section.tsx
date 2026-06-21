@@ -15,7 +15,7 @@ const points = [
   {
     icon: EyeOff,
     title: "No dashboard, no feed",
-    body: "There&apos;s nothing for anyone to scroll through. The conversation is the whole product — and it&apos;s just yours.",
+    body: "There&apos;s nothing for anyone to scroll through. The conversation is the whole product, and it&apos;s just yours.",
   },
   {
     icon: Trash2,
@@ -35,7 +35,7 @@ export function SafetySection() {
               A friend you can actually trust with the hard moments.
             </h2>
             <p className="mt-5 max-w-md text-pretty text-lg leading-relaxed text-muted-foreground">
-              Drunk Buddy steps in only when it should — and steps back when you&apos;ve got it.
+              Drunk Buddy steps in only when it should, and steps back when you&apos;ve got it.
               You&apos;re always in control of what it knows and what it does.
             </p>
           </div>

@@ -19,9 +19,9 @@ const instrumentSerif = Instrument_Serif({
 })
 
 export const metadata: Metadata = {
-  title: 'Drunk Buddy — the friend who texts you home safe',
+  title: 'Drunk Buddy, the friend who texts you home safe',
   description:
-    'Drunk Buddy is a contact in your iMessage. An AI friend that looks out for you when you are drunk — checks in, calls your Uber, orders food, blocks the drunk-texts, and gets help if you go quiet. No app. Just text it like a person.',
+    'Drunk Buddy is a contact in your iMessage. An AI friend that looks out for you when you are drunk: checks in, calls your Uber, orders food, blocks the drunk texts, and gets help if you go quiet. No app. Just text it like a person.',
   generator: 'v0.app',
   icons: {
     icon: [

@@ -13,7 +13,7 @@ const messages: ChatMessage[] = [
   {
     from: "buddy",
     node: (
-      <>cool cool. booked you an Uber home for whenever — it&apos;s 6 min out. say the word and i&apos;ll send it 🚕</>
+      <>cool cool. booked you an Uber home for whenever, it&apos;s 6 min out. say the word and i&apos;ll send it 🚕</>
     ),
   },
   { from: "you", node: <>ur the best honestly</> },

@@ -14,7 +14,7 @@ const steps = [
   {
     n: "03",
     title: "Just text it like a person",
-    body: "Going out? Say hi. From there it checks in, books rides, and steps in when you need it — all over text.",
+    body: "Going out? Say hi. From there it checks in, books rides, and steps in when you need it, all over text.",
   },
 ]
 

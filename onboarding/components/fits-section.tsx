@@ -2,8 +2,8 @@ import { Car, Pizza, ShieldBan, HeartPulse, BellRing, Footprints } from "lucide-
 
 const chips = [
   { label: "Calls your Uber", icon: Car },
-  { label: "Orders late-night food", icon: Pizza },
-  { label: "Blocks the ex-text", icon: ShieldBan },
+  { label: "Orders late night food", icon: Pizza },
+  { label: "Blocks the ex text", icon: ShieldBan },
   { label: "Watches your vitals", icon: HeartPulse },
   { label: "Checks in on you", icon: BellRing },
   { label: "Walks you home", icon: Footprints },
@@ -35,7 +35,7 @@ export function FitsSection() {
         <p className="mx-auto mt-12 max-w-xl text-pretty text-lg leading-relaxed text-muted-foreground">
           <span className="text-muted-foreground/70">(1)</span> It lives in the apps you already use
           to text your friends{" "}
-          <span className="text-foreground">(Messages, WhatsApp, Telegram)</span> — with the judgment
+          <span className="text-foreground">(Messages, WhatsApp, Telegram)</span>, with the judgment
           of a sober best friend and the patience of one who never gets tired of you.
         </p>
       </div>

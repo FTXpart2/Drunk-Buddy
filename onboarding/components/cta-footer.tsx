@@ -10,7 +10,7 @@ export function FinalCta() {
           Go out tonight. <span className="italic text-accent">Someone&apos;s got you.</span>
         </h2>
         <p className="mx-auto mt-6 max-w-lg text-pretty text-lg leading-relaxed text-muted-foreground">
-          Add Drunk Buddy to your phone in a few seconds. Then forget about it — until the moment
+          Add Drunk Buddy to your phone in a few seconds. Then forget about it, until the moment
           you&apos;re glad it&apos;s there.
         </p>
         <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">

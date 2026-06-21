@@ -17,7 +17,7 @@ const features: Feature[] = [
     tag: "Checks in",
     icon: MoonStar,
     title: "It notices when you go quiet.",
-    body: "Drunk Buddy keeps a loose eye on the night. If you stop replying or your messages start to slur, it nudges you — gently first, then for real.",
+    body: "Drunk Buddy keeps a loose eye on the night. If you stop replying or your messages start to slur, it nudges you, gently first, then for real.",
     chat: [
       { from: "buddy", text: "you went dark 25 min ago. just a thumbs up and i&apos;ll leave you alone 👍" },
       { from: "you", text: "👍" },
@@ -29,7 +29,7 @@ const features: Feature[] = [
     tag: "Gets you home",
     icon: Car,
     title: "A ride, before you even ask.",
-    body: "It knows where you are and where home is. One text and there&apos;s a car outside — no fumbling with apps, no surge-pricing panic at 2am.",
+    body: "It knows where you are and where home is. One text and there&apos;s a car outside, no fumbling with apps, no surge pricing panic at 2am.",
     chat: [
       { from: "you", text: "i think im ready to go home" },
       { from: "buddy", text: "got you. Uber booked, black Prius, 4 min away. plate ends 88X 🚗" },
@@ -40,8 +40,8 @@ const features: Feature[] = [
     id: "ex",
     tag: "Saves you from yourself",
     icon: ShieldBan,
-    title: "The drunk-text never sends.",
-    body: "Tell it who you shouldn&apos;t text tonight. When the urge hits, Drunk Buddy intercepts the message and holds it hostage until morning-you can decide.",
+    title: "The drunk text never sends.",
+    body: "Tell it who you shouldn&apos;t text tonight. When the urge hits, Drunk Buddy intercepts the message and holds it hostage until morning you can decide.",
     chat: [
       { from: "you", text: "im gonna text jordan one quick thing" },
       { from: "buddy", text: "no you&apos;re not 😌 i&apos;m holding it. read it back to me sober tmrw." },
@@ -53,10 +53,10 @@ const features: Feature[] = [
     tag: "Has your back",
     icon: HeartPulse,
     title: "If something&apos;s really wrong, it acts.",
-    body: "Go silent too long or have your wearable flag a spike, and Drunk Buddy escalates — looping in the emergency contacts you set up, with your live location.",
+    body: "Go silent too long or have your wearable flag a spike, and Drunk Buddy escalates, looping in the emergency contacts you set up, with your live location.",
     chat: [
       { from: "buddy", text: "haven&apos;t heard from you in 40 min + your heart rate spiked. checking in for real now." },
-      { from: "buddy", text: "no reply — i&apos;m letting Sam know where you are. hang tight. ❤️" },
+      { from: "buddy", text: "no reply, i&apos;m letting Sam know where you are. hang tight. ❤️" },
     ],
   },
 ]
@@ -68,7 +68,7 @@ export function Features() {
         <div className="max-w-2xl">
           <p className="text-sm font-medium uppercase tracking-wide text-accent">What it does</p>
           <h2 className="mt-3 text-balance font-serif text-4xl leading-tight tracking-tight sm:text-5xl">
-            It does the looking-out, so you can keep having fun.
+            It does the looking out, so you can keep having fun.
           </h2>
         </div>
 

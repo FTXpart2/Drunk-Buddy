@@ -25,7 +25,7 @@ export function Hero() {
         </h1>
 
         <p className="mx-auto mt-6 max-w-xl text-pretty text-lg leading-relaxed text-muted-foreground">
-          Drunk Buddy is a contact in your phone — an AI friend that looks out for you on a night
+          Drunk Buddy is a contact in your phone, an AI friend that looks out for you on a night
           out. No app to open. You just text it like a person, and it quietly handles the rest.
         </p>
 
